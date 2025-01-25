@@ -30,7 +30,7 @@ document.getElementById('add-task-form').addEventListener('submit', function (ev
         const taskList = document.getElementById('tasks');
         const listItem = document.createElement('li');
         listItem.className = 'list-group-item';
-        listItem.textContent = task.title;
+        listItem.textContent = task.title; // Asegúrate de que 'task.title' es correcto
         taskList.appendChild(listItem);
 
         // Limpiar el formulario

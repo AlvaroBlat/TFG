@@ -14,6 +14,7 @@ app.use(bodyParser.json());
 // Simulación de base de datos en memoria
 let users = []; // Para almacenar usuarios
 let tasks = []; // Para almacenar tareas
+let taskIdCounter = 1; // Contador para asignar ID únicos a las tareas
 
 // Ruta de bienvenida
 app.get('/', (req, res) => {
@@ -43,8 +44,23 @@ app.post('/login', (req, res) => {
 // Rutas para gestión de tareas
 app.post('/tasks', (req, res) => {
     const { title, description, priority, dueDate } = req.body;
-    const newTask = { id: tasks.length + 1, title, description, priority, dueDate, completed: false };
+
+    // Validar que se hayan enviado todos los campos necesarios
+    if (!title || !priority || !dueDate) {
+        return res.status(400).json({ message: 'Faltan campos obligatorios' });
+    }
+
+    const newTask = {
+        id: taskIdCounter++, // Asigna un ID único
+        title,
+        description,
+        priority,
+        dueDate,
+        completed: false
+    };
+
     tasks.push(newTask);
+    console.log('Tarea añadida:', newTask); // Log para depuración
     res.status(201).json(newTask);
 });
 
@@ -59,10 +75,10 @@ app.put('/tasks/:id', (req, res) => {
     if (!task) {
         return res.status(404).json({ message: 'Tarea no encontrada' });
     }
-    task.title = title || task.title;
-    task.description = description || task.description;
-    task.priority = priority || task.priority;
-    task.dueDate = dueDate || task.dueDate;
+    task.title = title !== undefined ? title : task.title;
+    task.description = description !== undefined ? description : task.description;
+    task.priority = priority !== undefined ? priority : task.priority;
+    task.dueDate = dueDate !== undefined ? dueDate : task.dueDate;
     task.completed = completed !== undefined ? completed : task.completed;
     res.json(task);
 });

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendario - Gestión de Tareas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"> <!-- Enlace a Font Awesome -->
+    <style>
+        .day {
+            border: 1px solid #dee2e6; /* Borde para cada día */
+            min-height: 120px; /* Altura mínima para cada día */
+            position: relative; /* Posicionamiento relativo para las tareas */
+            padding: 5px; /* Espaciado interno */
+            text-align: center; /* Centrar el contenido */
+        }
+        .task {
+            background-color: #f8f9fa; /* Fondo para las tareas */
+            border: 1px solid #007bff; /* Borde azul para las tareas */
+            padding: 2px; /* Espaciado interno */
+            margin: 2px 0; /* Espaciado externo */
+            border-radius: 3px; /* Bordes redondeados */
+        }
+        .calendar-header {
+            background-color: #f8f9fa; /* Fondo de la cabecera */
+            font-weight: bold;
+            text-align: center; /* Centrar texto */
+        }
+    </style>
+</head>
+<body>
+    <!-- Barra de navegación -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">Inicio</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="tareas.html"><i class="fas fa-tasks"></i> Tareas</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="calendario.html"><i class="fas fa-calendar-alt"></i> Calendario</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="colaboracion.html"><i class="fas fa-users"></i> Colaboración</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h2>Calendario de Tareas</h2>
+        <p>Aquí podrás ver un calendario con las tareas programadas.</p>
+        <div class="row">
+            <!-- Cabecera del calendario -->
+            <div class="col calendar-header">Lun</div>
+            <div class="col calendar-header">Mar</div>
+            <div class="col calendar-header">Mié</div>
+            <div class="col calendar-header">Jue</div>
+            <div class="col calendar-header">Vie</div>
+            <div class="col calendar-header">Sáb</div>
+            <div class="col calendar-header">Dom</div>
+        </div>
+        <div class="row">
+            <div class="col day"><strong>1</strong>
+                <div class="task">Tarea 1: Reunión con el equipo</div>
+                <div class="task">Tarea 2: Entregar informe</div>
+            </div>
+            <div class="col day"><strong>2</strong></div>
+            <div class="col day"><strong>3</strong>
+                <div class="task">Tarea 3: Revisar código</div>
+            </div>
+            <div class="col day"><strong>4</strong></div>
+            <div class="col day"><strong>5</strong>
+                <div class="task">Tarea 4: Presentación del proyecto</div>
+            </div>
+            <div class="col day"><strong>6</strong></div>
+            <div class="col day"><strong>7</strong></div>
+        </div>
+        <div class="row">
+            <div class="col day"><strong>8</strong></div>
+            <div class="col day"><strong>9</strong></div>
+            <div class="col day"><strong>10</strong></div>
+            <div class="col day"><strong>11</strong></div>
+            <div class="col day"><strong>12</strong></div>
+            <div class="col day"><strong>13</strong></div>
+            <div class="col day"><strong>14</strong></div>
+        </div>
+        <div class="row">
+            <div class="col day"><strong>15</strong></div>
+            <div class="col day"><strong>16</strong></div>
+            <div class="col day"><strong>17</strong></div>
+            <div class="col day"><strong>18</strong></div>
+            <div class="col day"><strong>19</strong></div>
+            <div class="col day"><strong>20</strong></div>
+            <div class="col day"><strong>21</strong></div>
+        </div>
+        <div class="row">
+            <div class="col day"><strong>22</strong></div>
+            <div class="col day"><strong>23</strong></div>
+            <div class="col day"><strong>24</strong></div>
+            <div class="col day"><strong>25</strong></div>
+            <div class="col day"><strong>26</strong></div>
+            <div class="col day"><strong>27</strong></div>
+            <div class="col day"><strong>28</strong></div>
+        </div>
+        <div class="row">
+            <div class="col day"><strong>29</strong></div>
+            <div class="col day"><strong>30</strong></div>
+            <div class="col day"><strong>31</strong></div>
+            <div class="col day"></div>
+            <div class="col day"></div>
+            <div class="col day"></div>
+            <div class="col day"></div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
