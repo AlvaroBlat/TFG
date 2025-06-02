@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Registro</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Bootstrap y FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    body {
+      background-color: #f8f9fa;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .contenedor-registro {
+      background-color: #fff;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      max-width: 500px;
+      width: 100%;
+      margin: auto;
+    }
+    .contenedor-registro h2 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .btn-registro {
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra de navegación -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+      <a class="navbar-brand me-auto" href="index.html"><i class="fas fa-home"></i> Inicio</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item"><a class="nav-link" href="proyectos.html"><i class="fas fa-folder"></i> Proyectos</a></li>
+          <li class="nav-item"><a class="nav-link" href="tareas.html"><i class="fas fa-tasks"></i> Tareas</a></li>
+          <li class="nav-item"><a class="nav-link" href="calendario.html"><i class="fas fa-calendar-alt"></i> Calendario</a></li>
+          <li class="nav-item"><a class="nav-link" href="colaboracion.html"><i class="fas fa-users"></i> Colaboración</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Formulario de registro -->
+  <div class="contenedor-registro">
+    <h2>Crear Cuenta</h2>
+    <form id="formulario-registro">
+      <div class="mb-3">
+        <label for="nombre" class="form-label">Nombre</label>
+        <input type="text" class="form-control" id="nombre" required>
+      </div>
+      <div class="mb-3">
+        <label for="apellido" class="form-label">Apellido</label>
+        <input type="text" class="form-control" id="apellido" required>
+      </div>
+      <div class="mb-3">
+        <label for="correo" class="form-label">Correo electrónico</label>
+        <input type="email" class="form-control" id="correo" required>
+      </div>
+      <div class="mb-3">
+        <label for="usuario" class="form-label">Nombre de usuario</label>
+        <input type="text" class="form-control" id="usuario" required>
+      </div>
+      <div class="mb-3">
+        <label for="contrasena" class="form-label">Contraseña</label>
+        <input type="password" class="form-control" id="contrasena" required>
+      </div>
+      <div class="mb-3">
+        <label for="confirmarContrasena" class="form-label">Confirmar contraseña</label>
+        <input type="password" class="form-control" id="confirmarContrasena" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-registro">Registrarse</button>
+    </form>
+    <div class="text-center mt-3">
+      <p>¿Ya tienes cuenta? <a href="login.html">Inicia sesión aquí</a></p>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module" src="../js/firebase.js" defer></script>
+  <script type="module" src="../js/scripts.js" defer></script>
+</body>
+</html>
