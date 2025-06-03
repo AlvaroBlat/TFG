@@ -22,7 +22,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const resultado = await getDocs(q);
 
       if (!resultado.empty) {
-        // Usuario y contraseña correctos
+        const doc = resultado.docs[0];
+        const datosUsuario = doc.data();
+
+        // Guardamos los datos del usuario en localStorage
+        localStorage.setItem("usuarioActual", JSON.stringify(datosUsuario));
+
+        // Redirigimos
         window.location.href = "index.html";
       } else {
         alert("Usuario o contraseña incorrectos");
@@ -36,10 +42,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-  const formulario = document.getElementById('formulario-registro');
+const formulario = document.getElementById('formulario-registro');
 
-  formulario.addEventListener('submit', async (e) => {
-    e.preventDefault();
+formulario.addEventListener('submit', async (e) => {
+  e.preventDefault();
 
     const usuario = document.getElementById('usuario').value.trim();
     const contrasena = document.getElementById('contrasena').value;
@@ -73,6 +79,15 @@ document.addEventListener("DOMContentLoaded", () => {
       alert("Error al registrarse. Inténtalo de nuevo.");
     }
   });
+});
+
+const usuarioActual = JSON.parse(localStorage.getItem("usuarioActual"));
+document.getElementById('nombre-usuario-nav').textContent = `${usuarioActual.nombre}`;
+
+document.getElementById('logout')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  localStorage.removeItem("usuarioActual");
+  window.location.href = "login.html";
 });
 
 /*
