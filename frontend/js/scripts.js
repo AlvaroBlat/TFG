@@ -3,6 +3,20 @@
 import { collection, getDocs, query, where, doc, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 import { db } from '../js/firebase.js';
 
+// --- PROTECCION SESIÓN NO INICIADA ---
+function protegerRuta() {
+  const rutasPublicas = ["login.html", "registro.html"];
+  const rutaActual = window.location.pathname.split("/").pop();
+
+  if (rutasPublicas.includes(rutaActual)) return;
+
+  const usuarioActual = JSON.parse(localStorage.getItem("usuarioActual"));
+  if (!usuarioActual || !usuarioActual.usuario) {
+    console.warn("No hay sesión activa. Redirigiendo a login...");
+    window.location.href = "login.html";
+  }
+}
+
 // --- LOGIN ---
 document.addEventListener('DOMContentLoaded', () => {
   const botonLogin = document.getElementById('boton-login');
@@ -39,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // --- REGISTRO ---
 document.addEventListener("DOMContentLoaded", () => {
+  protegerRuta();
   const formulario = document.getElementById('formulario-registro');
   if (formulario) {
     formulario.addEventListener('submit', async (e) => {
@@ -161,6 +176,7 @@ async function mostrarProyectos(usuario) {
         <p>Creado por: ${proyecto.creadoPor}</p>
         <ul>${htmlTareas}</ul>
         <button class="btn btn-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#form-${idProyecto}">Añadir Tarea</button>
+        <button class="btn btn-danger btn-sm btn-eliminar-proyecto" data-id="${idProyecto}">Eliminar Proyecto</button>
         <div class="collapse" id="form-${idProyecto}">
           <form class="formulario-tarea mt-2" data-id-proyecto="${idProyecto}">
             <div class="mb-2">
@@ -217,11 +233,41 @@ async function mostrarProyectos(usuario) {
       }
     });
   });
+
+  // Lógica de eliminación de proyecto y sus tareas asociadas
+  document.querySelectorAll(".btn-eliminar-proyecto").forEach(btn => {
+  btn.addEventListener("click", async () => {
+    const idProyecto = btn.getAttribute("data-id");
+    const confirmar = confirm("¿Estás seguro de que quieres eliminar este proyecto y todas sus tareas?");
+    if (!confirmar) return;
+
+    try {
+      // Eliminar tareas asociadas al proyecto
+      const tareasRef = collection(db, "tareas");
+      const q = query(tareasRef, where("idProyecto", "==", idProyecto));
+      const tareasSnap = await getDocs(q);
+
+      for (const tarea of tareasSnap.docs) {
+        await deleteDoc(doc(db, "tareas", tarea.id));
+      }
+
+      // Eliminar el proyecto
+      await deleteDoc(doc(db, "proyectos", idProyecto));
+
+      alert("Proyecto y sus tareas eliminados correctamente.");
+      await mostrarProyectos(usuarioActual.usuario);
+    } catch (err) {
+      console.error("Error al eliminar proyecto:", err);
+      alert("No se pudo eliminar el proyecto.");
+    }
+  });
+});
 }
 
 
 // --- RENDERIZAR TAREAS EN tareas.html ---
 document.addEventListener("DOMContentLoaded", async () => {
+  protegerRuta();
   const ruta = window.location.pathname;
   if (!ruta.includes("tareas.html")) return;
 
@@ -283,27 +329,88 @@ document.addEventListener("DOMContentLoaded", async () => {
     contenedorTareas.innerHTML = "";
 
     tareas.forEach((tarea) => {
-      const fecha = new Date(tarea.fechaLimite);
-      const fechaFormateada = fecha.toLocaleDateString();
-      const prioridadTexto = textoPrioridades[tarea.prioridad] || "Sin prioridad";
-      const clases = ["fila-tarea"];
-      if (tarea.completada) clases.push("completada");
+  const fecha = new Date(tarea.fechaLimite);
+  const fechaFormateada = fecha.toLocaleDateString();
+  const prioridadTexto = textoPrioridades[tarea.prioridad] || "Sin prioridad";
+  const clases = ["fila-tarea"];
+  if (tarea.completada) clases.push("completada");
 
-      const div = document.createElement("div");
-      div.className = clases.join(" ");
-      div.innerHTML = `
-        <div class="d-flex align-items-center">
-          <div class="flex-grow-1">
-            <strong>${tarea.nombre}:</strong> ${tarea.descripcion}<br>
-            <small>
-              Prioridad: ${prioridadTexto} | Fecha límite: ${fechaFormateada} | Proyecto: ${tarea.nombreProyecto}<br>
-              Creado por: ${tarea.creadaPor}
-            </small>
-          </div>
-        </div>
-      `;
-      contenedorTareas.appendChild(div);
+  const div = document.createElement("div");
+  div.className = clases.join(" ");
+  div.innerHTML = `
+    <div class="d-flex align-items-center">
+      <div class="flex-grow-1 contenido-tarea">
+        <strong>${tarea.nombre}:</strong> ${tarea.descripcion}<br>
+        <small>
+          Prioridad: ${prioridadTexto} | Fecha límite: ${fechaFormateada} | Proyecto: ${tarea.nombreProyecto}<br>
+          Creado por: ${tarea.creadaPor}
+        </small>
+      </div>
+      <div>
+        <button class="btn btn-success btn-sm btn-completar"><i class="fas fa-check"></i> ${tarea.completada ? "Desmarcar" : "Completar"}</button>
+        <button class="btn btn-primary btn-sm btn-editar"><i class="fas fa-edit"></i> Editar</button>
+        <button class="btn btn-danger btn-sm btn-eliminar"><i class="fas fa-trash"></i> Eliminar</button>
+      </div>
+    </div>
+  `;
+
+  // Botón completar
+  div.querySelector(".btn-completar").addEventListener("click", async () => {
+    const tareaRef = doc(db, "tareas", tarea.id);
+    await updateDoc(tareaRef, { completada: !tarea.completada });
+    await renderizarTareas();
+  });
+
+  // Botón eliminar
+  div.querySelector(".btn-eliminar").addEventListener("click", async () => {
+    if (confirm("¿Seguro que deseas eliminar esta tarea?")) {
+      const tareaRef = doc(db, "tareas", tarea.id);
+      await deleteDoc(tareaRef);
+      await renderizarTareas();
+    }
+  });
+
+  // Botón editar
+  div.querySelector(".btn-editar").addEventListener("click", () => {
+    const contenedor = div.querySelector(".contenido-tarea");
+    contenedor.innerHTML = `
+      <form class="form-editar-tarea mt-2">
+        <input type="text" name="nombre" class="form-control mb-2" value="${tarea.nombre}" required>
+        <textarea name="descripcion" class="form-control mb-2">${tarea.descripcion || ""}</textarea>
+        <input type="date" name="fechaLimite" class="form-control mb-2" value="${tarea.fechaLimite}">
+        <select name="prioridad" class="form-select mb-2">
+          <option value="0" ${tarea.prioridad === 0 ? "selected" : ""}>Baja</option>
+          <option value="1" ${tarea.prioridad === 1 ? "selected" : ""}>Media</option>
+          <option value="2" ${tarea.prioridad === 2 ? "selected" : ""}>Alta</option>
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
+        <button type="button" class="btn btn-secondary btn-sm btn-cancelar">Cancelar</button>
+      </form>
+    `;
+
+    const form = contenedor.querySelector(".form-editar-tarea");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const datos = new FormData(form);
+      const tareaActualizada = {
+        nombre: datos.get("nombre"),
+        descripcion: datos.get("descripcion"),
+        fechaLimite: datos.get("fechaLimite"),
+        prioridad: parseInt(datos.get("prioridad")),
+      };
+
+      const tareaRef = doc(db, "tareas", tarea.id);
+      await updateDoc(tareaRef, tareaActualizada);
+      await renderizarTareas();
     });
+
+    contenedor.querySelector(".btn-cancelar").addEventListener("click", renderizarTareas);
+  });
+
+  contenedorTareas.appendChild(div);
+});
   };
 
   filtroPrioridad.addEventListener("change", renderizarTareas);
@@ -313,9 +420,51 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 // --- INICIALIZACIÓN ---
 document.addEventListener("DOMContentLoaded", () => {
+  protegerRuta();
   if (usuarioActual && usuarioActual.usuario) {
     mostrarProyectos(usuarioActual.usuario);
   } else {
     window.location.href = "login.html";
+  }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (document.title === "Inicio") {
+    const resumenTareas = document.getElementById("resumen-tareas");
+
+    async function cargarResumenTareas() {
+      const proyectosRef = collection(db, "proyectos");
+      const tareasRef = collection(db, "tareas");
+
+      const qProyectos = query(proyectosRef, where("creadoPor", "==", usuarioActual.usuario));
+      const proyectosSnap = await getDocs(qProyectos);
+      const tareasSnap = await getDocs(tareasRef);
+
+      const idNombreProyecto = {};
+      proyectosSnap.forEach(proy => idNombreProyecto[proy.id] = proy.data().nombre);
+
+      const tareasPendientes = [];
+      tareasSnap.forEach(tareaDoc => {
+        const tarea = tareaDoc.data();
+        if (tarea.creadaPor === usuarioActual.usuario && !tarea.completada) {
+          tareasPendientes.push({
+            ...tarea,
+            nombreProyecto: idNombreProyecto[tarea.idProyecto]
+          });
+        }
+      });
+
+      if (tareasPendientes.length === 0) {
+        resumenTareas.innerHTML = "<li class='text-muted'>No tienes tareas pendientes.</li>";
+      } else {
+        tareasPendientes.slice(0, 10).forEach((tarea, i) => {
+          const li = document.createElement("li");
+          li.innerHTML = `Tarea ${i + 1}: ${tarea.nombre} <strong>(Proyecto: ${tarea.nombreProyecto})</strong>`;
+          resumenTareas.appendChild(li);
+        });
+      }
+    }
+
+    cargarResumenTareas();
   }
 });
