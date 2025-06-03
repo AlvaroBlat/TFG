@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+//Registro
 document.addEventListener("DOMContentLoaded", () => {
 const formulario = document.getElementById('formulario-registro');
 
@@ -54,11 +55,19 @@ formulario.addEventListener('submit', async (e) => {
     const correo = document.getElementById('correo').value;
 
     // Comprobar si ya existe ese usuario
-    const consulta = query(collection(db, "usuarios"), where("usuario", "==", usuario));
-    const resultado = await getDocs(consulta);
+    const consultaUsuario = query(collection(db, "usuarios"), where("usuario", "==", usuario));
+    const resultadoUsuario = await getDocs(consultaUsuario);
 
-    if (!resultado.empty) {
+    if (!resultadoUsuario.empty) {
       alert("Ese nombre de usuario ya existe. Elige otro.");
+      return;
+    }
+
+    const consultaCorreo = query(collection(db, "usuarios"), where("correo", "==", correo));
+    const resultadoCorreo = await getDocs(consultaCorreo);
+
+    if (!resultadoCorreo.empty) {
+      alert("Ya existe un usuario con ese correo. Elige otro.");
       return;
     }
 
@@ -72,7 +81,11 @@ formulario.addEventListener('submit', async (e) => {
         correo: correo
       });
 
-      localStorage.setItem("usuario", usuario);
+      const nuevoResultado = await getDocs(query(collection(db, "usuarios"), where("usuario", "==", usuario)));
+    if (!nuevoResultado.empty) {
+      const doc = nuevoResultado.docs[0];
+      localStorage.setItem("usuarioActual", JSON.stringify(doc.data()));
+    }
       window.location.href = "index.html";
     } catch (error) {
       console.error("Error al registrar usuario:", error);
@@ -81,13 +94,84 @@ formulario.addEventListener('submit', async (e) => {
   });
 });
 
+//Guardamos el usuario actual en localStorage
 const usuarioActual = JSON.parse(localStorage.getItem("usuarioActual"));
 document.getElementById('nombre-usuario-nav').textContent = `${usuarioActual.nombre}`;
 
+//Deteccion de logout
 document.getElementById('logout')?.addEventListener('click', (e) => {
   e.preventDefault();
   localStorage.removeItem("usuarioActual");
   window.location.href = "login.html";
+});
+
+const nombreProyecto = document.getElementById("nombreProyecto").value;
+console.log('Proyecto:', nombreProyecto);
+
+//Agregar proyecto
+document.getElementById("botonAñadirProyecto").addEventListener("click", async () => {
+  const nombreProyecto = document.getElementById("nombreProyecto").value.trim();
+
+  if (!nombreProyecto) {
+    alert("El nombre del proyecto es obligatorio.");
+    return;
+  }
+
+  try {
+    await addDoc(collection(db, "proyectos"), {
+      nombre: nombreProyecto,
+      creadoPor: usuarioActual.usuario
+    });
+
+    alert("Proyecto añadido correctamente.");
+    window.location.reload();
+  } catch (error) {
+    console.error("Error al añadir proyecto:", error);
+    alert("Hubo un error al guardar el proyecto.");
+  }
+});
+
+//Mostrar proyectos
+async function mostrarProyectos(usuario) {
+  const proyectosRef = collection(db, "proyectos");
+  const q = query(proyectosRef, where("creadoPor", "==", usuario));
+  const querySnapshot = await getDocs(q);
+
+  const contenedor = document.getElementById("lista-proyectos");
+  contenedor.innerHTML = "";
+
+  querySnapshot.forEach((doc, index) => {
+    const proyecto = doc.data();
+    const html = `
+      <div class="project">
+        <h5>${proyecto.nombre}</h5>
+        <p>Descripción: ${proyecto.descripcion || "Sin descripción."}</p>
+        <ul>
+          <!-- Aquí podrías cargar tareas asociadas -->
+          <li class="text-muted">No hay tareas aún.</li>
+        </ul>
+        <button class="btn btn-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#taskForm${index}">
+          Añadir Tarea
+        </button>
+        <div class="collapse" id="taskForm${index}">
+          <form class="mt-2">
+            <input type="text" class="form-control" placeholder="Nombre de la tarea" required>
+            <button type="submit" class="btn btn-primary btn-sm mt-2">Crear Tarea</button>
+          </form>
+        </div>
+      </div>
+    `;
+    contenedor.insertAdjacentHTML("beforeend", html);
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  if (usuarioActual && usuarioActual.usuario) {
+    mostrarProyectos(usuarioActual.usuario);
+  } else {
+    console.warn("No hay usuario actual. Redirigiendo a login...");
+    window.location.href = "login.html";
+  }
 });
 
 /*
