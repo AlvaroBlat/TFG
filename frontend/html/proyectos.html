@@ -48,7 +48,7 @@
         </div>
     </div>
 </nav>
-
+<!-- Botón para añadir nuevo proyecto -->
 <div class="container mt-4">
     <h2>Proyectos</h2>
     <p>Aquí podrás ver los proyectos y las tareas asociadas a cada uno.</p>
@@ -74,6 +74,10 @@
                         <label for="nombreProyecto" class="form-label">Nombre del Proyecto</label>
                         <input type="text" class="form-control" id="nombreProyecto" required>
                     </div>
+                    <div class="mb-3">
+                        <label for="descripcionProyecto" class="form-label">Descripción del Proyecto</label>
+                        <input type="text" class="form-control" id="descripcionProyecto" required>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -84,6 +88,7 @@
     </div>
 </div>
 
+<!-- Firebase y scripts -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
 <script type="module" src="../js/firebase.js"></script>
 <script type="module" src="../js/scripts.js"></script>
