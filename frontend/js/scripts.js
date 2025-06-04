@@ -1,6 +1,6 @@
 // scripts.js
 
-import { collection, getDocs, query, where, doc, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+import { collection, getDocs, query, where, doc, addDoc, updateDoc, deleteDoc, getDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 import { db } from '../js/firebase.js';
 
 // --- PROTECCION SESIÓN NO INICIADA ---
@@ -140,45 +140,47 @@ document.getElementById("botonAñadirProyecto")?.addEventListener("click", async
 
 // --- MOSTRAR PROYECTOS CON FORMULARIOS DINÁMICOS ---
 async function mostrarProyectos(usuario) {
-  const proyectosRef = collection(db, "proyectos");
-  const qProyectos = query(proyectosRef, where("creadoPor", "==", usuario));
-  const proyectosSnap = await getDocs(qProyectos);
+  const esInicio = document.title === "Inicio"; // Diferenciar vista
 
-  const tareasRef = collection(db, "tareas");
-  const tareasSnap = await getDocs(tareasRef);
+  const proyectosRef = collection(db, "proyectos");
+  const qCreados = query(proyectosRef, where("creadoPor", "==", usuario));
+  const qColaborados = query(proyectosRef, where("colaboradores", "array-contains", usuario));
+
+  const [snapCreados, snapColaborados] = await Promise.all([
+    getDocs(qCreados),
+    getDocs(qColaborados)
+  ]);
 
   const contenedor = document.getElementById("lista-proyectos");
   contenedor.innerHTML = "";
+  const proyectosMostrados = new Set();
 
-  proyectosSnap.forEach((docSnap) => {
+  const mostrarProyecto = (docSnap, esCreador) => {
     const proyecto = docSnap.data();
     const idProyecto = docSnap.id;
+    if (proyectosMostrados.has(idProyecto)) return;
+    proyectosMostrados.add(idProyecto);
 
-    // Filtrar tareas que pertenecen a este proyecto
-    const tareasProyecto = [];
-    tareasSnap.forEach((tareaDoc) => {
-      const tarea = tareaDoc.data();
-      if (tarea.idProyecto === idProyecto) {
-        tareasProyecto.push(tarea);
-      }
-    });
+    const colaboradoresTexto = proyecto.colaboradores?.length
+      ? proyecto.colaboradores.join(", ")
+      : "Sin colaboradores";
 
-    // Crear HTML para las tareas
-    const htmlTareas = tareasProyecto.length > 0
-      ? tareasProyecto.map(t => `<div>Tareas del proyecto: </div> <li>Nombre de la tarea: <strong>${t.nombre}</strong> | Descripción: ${t.descripcion} | Prioridad: ${["Baja", "Media", "Alta"][t.prioridad]} | Fecha Limite: ${t.fechaLimite}</li>`).join("")
-      : `<li class="text-muted">No hay tareas aún.</li>`;
-
-    // Insertar proyecto con tareas
     const html = `
       <div class="project mb-4">
         <h5>${proyecto.nombre}</h5>
         <p>Descripción: ${proyecto.descripcion || "Sin descripción."}</p>
         <p>Creado por: ${proyecto.creadoPor}</p>
-        <ul>${htmlTareas}</ul>
-        <button class="btn btn-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#form-${idProyecto}">Añadir Tarea</button>
-        <button class="btn btn-danger btn-sm btn-eliminar-proyecto" data-id="${idProyecto}">Eliminar Proyecto</button>
-        <div class="collapse" id="form-${idProyecto}">
-          <form class="formulario-tarea mt-2" data-id-proyecto="${idProyecto}">
+        <p><strong>Colaboradores:</strong> ${colaboradoresTexto}</p>
+
+        ${!esInicio && esCreador ? `
+          <button class="btn btn-success btn-sm btn-colaboracion-proyecto" data-id="${idProyecto}">Colaboración</button>
+          <button class="btn btn-danger btn-sm btn-eliminar-proyecto" data-id="${idProyecto}">Eliminar Proyecto</button>
+        ` : ""}
+
+        ${!esInicio ? `
+        <button class="btn btn-secondary btn-sm " data-bs-toggle="collapse" data-bs-target="#form-${idProyecto}">Añadir Tarea</button>
+        <div class="collapse mt-2" id="form-${idProyecto}">
+          <form class="formulario-tarea" data-id-proyecto="${idProyecto}">
             <div class="mb-2">
               <label class="form-label">Nombre</label>
               <input type="text" class="form-control" name="nombre" required>
@@ -202,68 +204,149 @@ async function mostrarProyectos(usuario) {
             <button type="submit" class="btn btn-success btn-sm">Crear Tarea</button>
           </form>
         </div>
+        ` : ""}
       </div>
     `;
+
     contenedor.insertAdjacentHTML("beforeend", html);
-  });
+  };
 
-  // Listeners para cada formulario de tarea
-  document.querySelectorAll(".formulario-tarea").forEach(form => {
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const datos = new FormData(form);
+  snapCreados.forEach(doc => mostrarProyecto(doc, true));
+  snapColaborados.forEach(doc => mostrarProyecto(doc, false));
 
-      const tarea = {
-        nombre: datos.get("nombre"),
-        descripcion: datos.get("descripcion"),
-        fechaLimite: datos.get("fechaLimite"),
-        prioridad: parseInt(datos.get("prioridad")),
-        completada: false,
-        idProyecto: form.getAttribute("data-id-proyecto"),
-        creadaPor: usuarioActual.usuario
-      };
+  // Si NO es la vista de inicio, activamos listeners
+  if (!document.title.includes("Inicio")) {
+    document.querySelectorAll(".formulario-tarea").forEach(form => {
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const datos = new FormData(form);
 
-      try {
-        await addDoc(collection(db, "tareas"), tarea);
-        alert("Tarea añadida correctamente.");
-        window.location.reload();
-      } catch (err) {
-        console.error("Error al crear tarea:", err);
-        alert("No se pudo guardar la tarea.");
-      }
+        const tarea = {
+          nombre: datos.get("nombre"),
+          descripcion: datos.get("descripcion"),
+          fechaLimite: datos.get("fechaLimite"),
+          prioridad: parseInt(datos.get("prioridad")),
+          completada: false,
+          idProyecto: form.getAttribute("data-id-proyecto"),
+          creadaPor: usuarioActual.usuario
+        };
+
+        try {
+          await addDoc(collection(db, "tareas"), tarea);
+          alert("Tarea añadida correctamente.");
+          window.location.reload();
+        } catch (err) {
+          console.error("Error al crear tarea:", err);
+          alert("No se pudo guardar la tarea.");
+        }
+      });
     });
-  });
 
-  // Lógica de eliminación de proyecto y sus tareas asociadas
-  document.querySelectorAll(".btn-eliminar-proyecto").forEach(btn => {
-  btn.addEventListener("click", async () => {
-    const idProyecto = btn.getAttribute("data-id");
-    const confirmar = confirm("¿Estás seguro de que quieres eliminar este proyecto y todas sus tareas?");
-    if (!confirmar) return;
+    document.querySelectorAll(".btn-eliminar-proyecto").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-id");
+        if (!confirm("¿Estás seguro de que quieres eliminar este proyecto?")) return;
+        try {
+          await deleteDoc(doc(db, "proyectos", id));
+          alert("Proyecto eliminado.");
+          window.location.reload();
+        } catch (err) {
+          console.error("Error al eliminar proyecto:", err);
+        }
+      });
+    });
 
-    try {
-      // Eliminar tareas asociadas al proyecto
-      const tareasRef = collection(db, "tareas");
-      const q = query(tareasRef, where("idProyecto", "==", idProyecto));
-      const tareasSnap = await getDocs(q);
+    document.querySelectorAll(".btn-colaboracion-proyecto").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const idProyecto = btn.getAttribute("data-id");
+        const proyectoRef = doc(db, "proyectos", idProyecto);
+        const proyectoSnap = await getDoc(proyectoRef);
+        const proyectoData = proyectoSnap.data();
 
-      for (const tarea of tareasSnap.docs) {
-        await deleteDoc(doc(db, "tareas", tarea.id));
-      }
+        const usuariosSnap = await getDocs(collection(db, "usuarios"));
+        const disponibles = [];
+        usuariosSnap.forEach(docu => {
+          const u = docu.data().usuario;
+          if (u !== proyectoData.creadoPor && !proyectoData.colaboradores?.includes(u)) {
+            disponibles.push(u);
+          }
+        });
 
-      // Eliminar el proyecto
-      await deleteDoc(doc(db, "proyectos", idProyecto));
+        const modal = document.createElement("div");
+        modal.classList.add("modal", "fade");
+        modal.setAttribute("tabindex", "-1");
+        modal.innerHTML = `
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">Gestión de Colaboradores</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <h6>Colaboradores actuales:</h6>
+                <ul id="lista-colaboradores">
+                  ${proyectoData.colaboradores?.map(colab => `
+                    <li class="d-flex justify-content-between align-items-center">
+                      ${colab}
+                      <button class="btn btn-sm btn-danger btn-eliminar-colab" data-usuario="${colab}">Eliminar</button>
+                    </li>
+                  `).join("") || "<li class='text-muted'>Sin colaboradores.</li>"}
+                </ul>
+                <hr>
+                <label for="select-nuevos">Añadir nuevos colaboradores:</label>
+                <select id="select-nuevos" class="form-select" multiple>
+                  ${disponibles.map(u => `<option value="${u}">${u}</option>`).join("")}
+                </select>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="confirmar-colaboradores">Guardar cambios</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+              </div>
+            </div>
+          </div>
+        `;
 
-      alert("Proyecto y sus tareas eliminados correctamente.");
-      await mostrarProyectos(usuarioActual.usuario);
-    } catch (err) {
-      console.error("Error al eliminar proyecto:", err);
-      alert("No se pudo eliminar el proyecto.");
-    }
-  });
-});
+        document.body.appendChild(modal);
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+
+        modal.querySelector("#confirmar-colaboradores").addEventListener("click", async () => {
+          const seleccionados = Array.from(modal.querySelector("#select-nuevos").selectedOptions).map(opt => opt.value);
+          if (seleccionados.length > 0) {
+            try {
+              await updateDoc(proyectoRef, {
+                colaboradores: arrayUnion(...seleccionados)
+              });
+              alert("Colaboradores añadidos.");
+              window.location.reload();
+            } catch (err) {
+              console.error("Error al añadir colaboradores:", err);
+            }
+          } else {
+            bsModal.hide();
+          }
+        });
+
+        modal.querySelectorAll(".btn-eliminar-colab").forEach(b => {
+          b.addEventListener("click", async () => {
+            const usuario = b.getAttribute("data-usuario");
+            try {
+              await updateDoc(proyectoRef, {
+                colaboradores: arrayRemove(usuario)
+              });
+              alert("Colaborador eliminado.");
+              window.location.reload();
+            } catch (err) {
+              console.error("Error al eliminar colaborador:", err);
+            }
+          });
+        });
+
+        modal.addEventListener("hidden.bs.modal", () => modal.remove());
+      });
+    });
+  }
 }
-
 
 // --- RENDERIZAR TAREAS EN tareas.html ---
 document.addEventListener("DOMContentLoaded", async () => {
@@ -279,8 +362,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const obtenerTareas = async () => {
     const proyectosRef = collection(db, "proyectos");
-    const qProyectos = query(proyectosRef, where("creadoPor", "==", usuarioActual.usuario));
-    const proyectosSnap = await getDocs(qProyectos);
+    const proyectosSnap = await getDocs(proyectosRef);
     const tareasRef = collection(db, "tareas");
     const tareasSnap = await getDocs(tareasRef);
 
@@ -288,12 +370,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     proyectosSnap.forEach((proyectoDoc) => {
       const proyecto = proyectoDoc.data();
       const idProyecto = proyectoDoc.id;
-      tareasSnap.forEach((tareaDoc) => {
-        const tarea = tareaDoc.data();
-        if (tarea.idProyecto === idProyecto) {
-          tareasAgrupadas.push({ ...tarea, id: tareaDoc.id, nombreProyecto: proyecto.nombre });
-        }
-      });
+
+      if (
+        proyecto.creadoPor === usuarioActual.usuario ||
+        (Array.isArray(proyecto.colaboradores) && proyecto.colaboradores.includes(usuarioActual.usuario))
+      ) {
+        tareasSnap.forEach((tareaDoc) => {
+          const tarea = tareaDoc.data();
+          if (tarea.idProyecto === idProyecto) {
+            tareasAgrupadas.push({ ...tarea, id: tareaDoc.id, nombreProyecto: proyecto.nombre });
+          }
+        });
+      }
     });
     return tareasAgrupadas;
   };
@@ -329,88 +417,83 @@ document.addEventListener("DOMContentLoaded", async () => {
     contenedorTareas.innerHTML = "";
 
     tareas.forEach((tarea) => {
-  const fecha = new Date(tarea.fechaLimite);
-  const fechaFormateada = fecha.toLocaleDateString();
-  const prioridadTexto = textoPrioridades[tarea.prioridad] || "Sin prioridad";
-  const clases = ["fila-tarea"];
-  if (tarea.completada) clases.push("completada");
+      const fecha = new Date(tarea.fechaLimite);
+      const fechaFormateada = fecha.toLocaleDateString();
+      const prioridadTexto = textoPrioridades[tarea.prioridad] || "Sin prioridad";
+      const clases = ["fila-tarea"];
+      if (tarea.completada) clases.push("completada");
 
-  const div = document.createElement("div");
-  div.className = clases.join(" ");
-  div.innerHTML = `
-    <div class="d-flex align-items-center">
-      <div class="flex-grow-1 contenido-tarea">
-        <strong>${tarea.nombre}:</strong> ${tarea.descripcion}<br>
-        <small>
-          Prioridad: ${prioridadTexto} | Fecha límite: ${fechaFormateada} | Proyecto: ${tarea.nombreProyecto}<br>
-          Creado por: ${tarea.creadaPor}
-        </small>
-      </div>
-      <div>
-        <button class="btn btn-success btn-sm btn-completar"><i class="fas fa-check"></i> ${tarea.completada ? "Desmarcar" : "Completar"}</button>
-        <button class="btn btn-primary btn-sm btn-editar"><i class="fas fa-edit"></i> Editar</button>
-        <button class="btn btn-danger btn-sm btn-eliminar"><i class="fas fa-trash"></i> Eliminar</button>
-      </div>
-    </div>
-  `;
+      const div = document.createElement("div");
+      div.className = clases.join(" ");
+      div.innerHTML = `
+        <div class="d-flex align-items-center">
+          <div class="flex-grow-1 contenido-tarea">
+            <strong>${tarea.nombre}:</strong> ${tarea.descripcion}<br>
+            <small>
+              Prioridad: ${prioridadTexto} | Fecha límite: ${fechaFormateada} | <strong>Proyecto: ${tarea.nombreProyecto}</strong><br>
+              Creado por: ${tarea.creadaPor}
+            </small>
+          </div>
+          <div>
+            <button class="btn btn-success btn-sm btn-completar-tarea"><i class="fas fa-check"></i> ${tarea.completada ? "Desmarcar" : "Completar"}</button>
+            <button class="btn btn-primary btn-sm btn-editar-tarea"><i class="fas fa-edit"></i> Editar</button>
+            <button class="btn btn-danger btn-sm btn-eliminar-tarea"><i class="fas fa-trash"></i> Eliminar</button>
+          </div>
+        </div>
+      `;
 
-  // Botón completar
-  div.querySelector(".btn-completar").addEventListener("click", async () => {
-    const tareaRef = doc(db, "tareas", tarea.id);
-    await updateDoc(tareaRef, { completada: !tarea.completada });
-    await renderizarTareas();
-  });
+      div.querySelector(".btn-completar-tarea").addEventListener("click", async () => {
+        const tareaRef = doc(db, "tareas", tarea.id);
+        await updateDoc(tareaRef, { completada: !tarea.completada });
+        await renderizarTareas();
+      });
 
-  // Botón eliminar
-  div.querySelector(".btn-eliminar").addEventListener("click", async () => {
-    if (confirm("¿Seguro que deseas eliminar esta tarea?")) {
-      const tareaRef = doc(db, "tareas", tarea.id);
-      await deleteDoc(tareaRef);
-      await renderizarTareas();
-    }
-  });
+      div.querySelector(".btn-eliminar-tarea").addEventListener("click", async () => {
+        if (confirm("¿Seguro que deseas eliminar esta tarea?")) {
+          const tareaRef = doc(db, "tareas", tarea.id);
+          await deleteDoc(tareaRef);
+          await renderizarTareas();
+        }
+      });
 
-  // Botón editar
-  div.querySelector(".btn-editar").addEventListener("click", () => {
-    const contenedor = div.querySelector(".contenido-tarea");
-    contenedor.innerHTML = `
-      <form class="form-editar-tarea mt-2">
-        <input type="text" name="nombre" class="form-control mb-2" value="${tarea.nombre}" required>
-        <textarea name="descripcion" class="form-control mb-2">${tarea.descripcion || ""}</textarea>
-        <input type="date" name="fechaLimite" class="form-control mb-2" value="${tarea.fechaLimite}">
-        <select name="prioridad" class="form-select mb-2">
-          <option value="0" ${tarea.prioridad === 0 ? "selected" : ""}>Baja</option>
-          <option value="1" ${tarea.prioridad === 1 ? "selected" : ""}>Media</option>
-          <option value="2" ${tarea.prioridad === 2 ? "selected" : ""}>Alta</option>
-        </select>
-        <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
-        <button type="button" class="btn btn-secondary btn-sm btn-cancelar">Cancelar</button>
-      </form>
-    `;
+      div.querySelector(".btn-editar-tarea").addEventListener("click", () => {
+        const contenedor = div.querySelector(".contenido-tarea");
+        contenedor.innerHTML = `
+          <form class="form-editar-tarea mt-2">
+            <input type="text" name="nombre" class="form-control mb-2" value="${tarea.nombre}" required>
+            <textarea name="descripcion" class="form-control mb-2">${tarea.descripcion || ""}</textarea>
+            <input type="date" name="fechaLimite" class="form-control mb-2" value="${tarea.fechaLimite}">
+            <select name="prioridad" class="form-select mb-2">
+              <option value="0" ${tarea.prioridad === 0 ? "selected" : ""}>Baja</option>
+              <option value="1" ${tarea.prioridad === 1 ? "selected" : ""}>Media</option>
+              <option value="2" ${tarea.prioridad === 2 ? "selected" : ""}>Alta</option>
+            </select>
+            <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
+            <button type="button" class="btn btn-secondary btn-sm btn-cancelar">Cancelar</button>
+          </form>
+        `;
 
-    const form = contenedor.querySelector(".form-editar-tarea");
+        const form = contenedor.querySelector(".form-editar-tarea");
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const datos = new FormData(form);
+          const tareaActualizada = {
+            nombre: datos.get("nombre"),
+            descripcion: datos.get("descripcion"),
+            fechaLimite: datos.get("fechaLimite"),
+            prioridad: parseInt(datos.get("prioridad"))
+          };
+          const tareaRef = doc(db, "tareas", tarea.id);
+          await updateDoc(tareaRef, tareaActualizada);
+          await renderizarTareas();
+        });
 
-      const datos = new FormData(form);
-      const tareaActualizada = {
-        nombre: datos.get("nombre"),
-        descripcion: datos.get("descripcion"),
-        fechaLimite: datos.get("fechaLimite"),
-        prioridad: parseInt(datos.get("prioridad")),
-      };
+        contenedor.querySelector(".btn-cancelar").addEventListener("click", renderizarTareas);
+      });
 
-      const tareaRef = doc(db, "tareas", tarea.id);
-      await updateDoc(tareaRef, tareaActualizada);
-      await renderizarTareas();
+      contenedorTareas.appendChild(div);
     });
-
-    contenedor.querySelector(".btn-cancelar").addEventListener("click", renderizarTareas);
-  });
-
-  contenedorTareas.appendChild(div);
-});
   };
 
   filtroPrioridad.addEventListener("change", renderizarTareas);
@@ -418,16 +501,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   await renderizarTareas();
 });
 
-// --- INICIALIZACIÓN ---
-document.addEventListener("DOMContentLoaded", () => {
-  protegerRuta();
-  if (usuarioActual && usuarioActual.usuario) {
-    mostrarProyectos(usuarioActual.usuario);
-  } else {
-    window.location.href = "login.html";
-  }
-});
 
+// --- CARGAR PROYECTOS PROPIOS EN INICIO ---
 document.addEventListener('DOMContentLoaded', () => {
   if (document.title === "Inicio") {
     const resumenTareas = document.getElementById("resumen-tareas");
@@ -459,12 +534,92 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         tareasPendientes.slice(0, 10).forEach((tarea, i) => {
           const li = document.createElement("li");
-          li.innerHTML = `Tarea ${i + 1}: ${tarea.nombre} <strong>(Proyecto: ${tarea.nombreProyecto})</strong>`;
+          li.innerHTML = `${tarea.nombre} <strong>(Proyecto: ${tarea.nombreProyecto})</strong>`;
           resumenTareas.appendChild(li);
         });
       }
     }
 
     cargarResumenTareas();
+  }
+});
+
+// --- CARGAR TAREAS Y COLABORACIONES EN INICIO ---
+document.addEventListener('DOMContentLoaded', () => {
+  if (document.title === "Inicio") {
+    const resumenTareas = document.getElementById("resumen-tareas");
+    const seccionColaboraciones = document.getElementById("colaboraciones");
+
+    async function cargarResumenInicio() {
+      const proyectosRef = collection(db, "proyectos");
+      const tareasRef = collection(db, "tareas");
+
+      const proyectosSnap = await getDocs(proyectosRef);
+      const tareasSnap = await getDocs(tareasRef);
+
+      const tareasPendientes = [];
+      const colaboraciones = [];
+
+      proyectosSnap.forEach((proyDoc) => {
+        const proyecto = proyDoc.data();
+        const idProyecto = proyDoc.id;
+
+        tareasSnap.forEach((tareaDoc) => {
+          const tarea = tareaDoc.data();
+          if (tarea.idProyecto === idProyecto && !tarea.completada) {
+            // Tareas propias
+            if (tarea.creadaPor === usuarioActual.usuario) {
+              tareasPendientes.push({
+                ...tarea,
+                nombreProyecto: proyecto.nombre
+              });
+            }
+            // Tareas colaborativas
+            if (Array.isArray(proyecto.colaboradores) && proyecto.colaboradores.includes(usuarioActual.usuario)) {
+              colaboraciones.push({
+                ...tarea,
+                nombreProyecto: proyecto.nombre,
+                creadorProyecto: proyecto.creadoPor
+              });
+            }
+          }
+        });
+      });
+
+      // Mostrar tareas propias
+      if (tareasPendientes.length === 0) {
+        resumenTareas.innerHTML = "<li class='text-muted'>No tienes tareas pendientes.</li>";
+      } else {
+        tareasPendientes.slice(0, 10).forEach((tarea) => {
+          const li = document.createElement("li");
+          li.innerHTML = `${tarea.nombre} <strong>(Proyecto: ${tarea.nombreProyecto})</strong>`;
+          resumenTareas.appendChild(li);
+        });
+      }
+
+      // Mostrar colaboraciones
+      if (colaboraciones.length === 0) {
+        seccionColaboraciones.innerHTML = "<li class='text-muted'>No colaboras en ningún proyecto por ahora.</li>";
+      } else {
+        colaboraciones.slice(0, 10).forEach((tarea) => {
+          const li = document.createElement("li");
+          li.innerHTML = `${tarea.nombre} <strong>(Proyecto: ${tarea.nombreProyecto})</strong> <span class="text-muted">[Creado por: ${tarea.creadorProyecto}]</span>`;
+          seccionColaboraciones.appendChild(li);
+        });
+      }
+    }
+
+    cargarResumenInicio();
+  }
+});
+
+
+// --- INICIALIZACIÓN ---
+document.addEventListener("DOMContentLoaded", () => {
+  protegerRuta();
+  if (usuarioActual && usuarioActual.usuario) {
+    mostrarProyectos(usuarioActual.usuario);
+  } else {
+    window.location.href = "login.html";
   }
 });
