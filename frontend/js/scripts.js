@@ -1,5 +1,6 @@
 // scripts.js
 
+// --- IMPORTS DE FIREBASE ---
 import { collection, getDocs, query, where, doc, addDoc, updateDoc, deleteDoc, getDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 import { db } from '../js/firebase.js';
 
@@ -11,6 +12,7 @@ function protegerRuta() {
   if (rutasPublicas.includes(rutaActual)) return;
 
   const usuarioActual = JSON.parse(localStorage.getItem("usuarioActual"));
+  // Verificar si el usuario ha iniciado sesión
   if (!usuarioActual || !usuarioActual.usuario) {
     console.warn("No hay sesión activa. Redirigiendo a login...");
     window.location.href = "login.html";
@@ -65,6 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const apellido = document.getElementById('apellido').value;
       const correo = document.getElementById('correo').value;
 
+      // Verificar si el usuario ya existe
       const consultaUsuario = query(collection(db, "usuarios"), where("usuario", "==", usuario));
       const resultadoUsuario = await getDocs(consultaUsuario);
       if (!resultadoUsuario.empty) {
@@ -72,6 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
+      // Verificar si ya existe un usuario con ese correo
       const consultaCorreo = query(collection(db, "usuarios"), where("correo", "==", correo));
       const resultadoCorreo = await getDocs(consultaCorreo);
       if (!resultadoCorreo.empty) {
@@ -114,6 +118,16 @@ document.getElementById('logout')?.addEventListener('click', (e) => {
   window.location.href = "login.html";
 });
 
+// --- INICIALIZACIÓN ---
+document.addEventListener("DOMContentLoaded", () => {
+  protegerRuta();
+  if (usuarioActual && usuarioActual.usuario) {
+    mostrarProyectos(usuarioActual.usuario);
+  } else {
+    window.location.href = "login.html";
+  }
+});
+
 // --- AGREGAR PROYECTO ---
 document.getElementById("botonAñadirProyecto")?.addEventListener("click", async () => {
   const nombreProyecto = document.getElementById("nombreProyecto").value.trim();
@@ -138,9 +152,9 @@ document.getElementById("botonAñadirProyecto")?.addEventListener("click", async
   }
 });
 
-// --- MOSTRAR PROYECTOS CON FORMULARIOS DINÁMICOS ---
+// --- MOSTRAR PROYECTOS ---
 async function mostrarProyectos(usuario) {
-  const esInicio = document.title === "Inicio"; // Diferenciar vista
+  const esInicio = document.title === "Inicio"; 
 
   const proyectosRef = collection(db, "proyectos");
   const qCreados = query(proyectosRef, where("creadoPor", "==", usuario));
@@ -165,6 +179,7 @@ async function mostrarProyectos(usuario) {
       ? proyecto.colaboradores.join(", ")
       : "Sin colaboradores";
 
+    // Crear el HTML para mostrar el proyecto
     const html = `
       <div class="project mb-4">
         <h5>${proyecto.nombre}</h5>
@@ -174,6 +189,7 @@ async function mostrarProyectos(usuario) {
 
         ${!esInicio && esCreador ? `
           <button class="btn btn-success btn-sm btn-colaboracion-proyecto" data-id="${idProyecto}">Colaboración</button>
+          <button class="btn btn-warning btn-sm btn-editar-proyecto" data-id="${idProyecto}" data-nombre="${proyecto.nombre}" data-descripcion="${proyecto.descripcion || ''}">Editar Proyecto</button>
           <button class="btn btn-danger btn-sm btn-eliminar-proyecto" data-id="${idProyecto}">Eliminar Proyecto</button>
         ` : ""}
 
@@ -211,10 +227,11 @@ async function mostrarProyectos(usuario) {
     contenedor.insertAdjacentHTML("beforeend", html);
   };
 
+  // Mostrar proyectos
   snapCreados.forEach(doc => mostrarProyecto(doc, true));
   snapColaborados.forEach(doc => mostrarProyecto(doc, false));
 
-  // Si NO es la vista de inicio, activamos listeners
+  // Si no es la vista de inicio, estamos en la vista de proyectos, activamos listeners de botones
   if (!document.title.includes("Inicio")) {
     document.querySelectorAll(".formulario-tarea").forEach(form => {
       form.addEventListener("submit", async (e) => {
@@ -256,6 +273,72 @@ async function mostrarProyectos(usuario) {
       });
     });
 
+    // Listener para editar proyecto
+    document.querySelectorAll(".btn-editar-proyecto").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idProyecto = btn.getAttribute("data-id");
+      const nombreActual = btn.getAttribute("data-nombre");
+      const descripcionActual = btn.getAttribute("data-descripcion");
+
+      const modal = document.createElement("div");
+      modal.classList.add("modal", "fade");
+      modal.setAttribute("tabindex", "-1");
+
+      modal.innerHTML = `
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Editar Proyecto</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <form id="form-editar-proyecto">
+                <div class="mb-2">
+                  <label>Nombre del proyecto</label>
+                  <input type="text" class="form-control" name="nombre" value="${nombreActual}" required>
+                </div>
+                <div class="mb-2">
+                  <label>Descripción</label>
+                  <textarea class="form-control" name="descripcion">${descripcionActual}</textarea>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="submit" form="form-editar-proyecto" class="btn btn-primary">Guardar cambios</button>
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(modal);
+      const bsModal = new bootstrap.Modal(modal);
+      bsModal.show();
+
+    document.getElementById("form-editar-proyecto").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const datos = new FormData(e.target);
+      const nuevoNombre = datos.get("nombre");
+      const nuevaDescripcion = datos.get("descripcion");
+
+      try {
+        await updateDoc(doc(db, "proyectos", idProyecto), {
+          nombre: nuevoNombre,
+          descripcion: nuevaDescripcion
+        });
+        alert("Proyecto actualizado.");
+        window.location.reload();
+      } catch (err) {
+        console.error("Error al actualizar proyecto:", err);
+        alert("No se pudo actualizar el proyecto.");
+      }
+    });
+
+    modal.addEventListener("hidden.bs.modal", () => modal.remove());
+  });
+});
+
+    // Listener de botón de colaboración
     document.querySelectorAll(".btn-colaboracion-proyecto").forEach(btn => {
       btn.addEventListener("click", async () => {
         const idProyecto = btn.getAttribute("data-id");
@@ -272,6 +355,7 @@ async function mostrarProyectos(usuario) {
           }
         });
 
+        // Crear el HTML para mostrar el modal de colaboradores
         const modal = document.createElement("div");
         modal.classList.add("modal", "fade");
         modal.setAttribute("tabindex", "-1");
@@ -386,6 +470,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     return tareasAgrupadas;
   };
 
+  // Aplica los filtros de prioridad y fecha a las tareas
   const aplicarFiltros = (tareas) => {
     const filtroP = filtroPrioridad.value;
     const filtroF = filtroFecha.value;
@@ -412,6 +497,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   };
 
+  // Renderiza las tareas
   const renderizarTareas = async () => {
     const tareas = aplicarFiltros(await obtenerTareas());
     contenedorTareas.innerHTML = "";
@@ -422,7 +508,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const prioridadTexto = textoPrioridades[tarea.prioridad] || "Sin prioridad";
       const clases = ["fila-tarea"];
       if (tarea.completada) clases.push("completada");
-
+      
       const div = document.createElement("div");
       div.className = clases.join(" ");
       div.innerHTML = `
@@ -442,12 +528,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         </div>
       `;
 
+      // Evento de completar tarea
       div.querySelector(".btn-completar-tarea").addEventListener("click", async () => {
         const tareaRef = doc(db, "tareas", tarea.id);
         await updateDoc(tareaRef, { completada: !tarea.completada });
         await renderizarTareas();
       });
 
+      // Evento de eliminar tarea
       div.querySelector(".btn-eliminar-tarea").addEventListener("click", async () => {
         if (confirm("¿Seguro que deseas eliminar esta tarea?")) {
           const tareaRef = doc(db, "tareas", tarea.id);
@@ -456,6 +544,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       });
 
+      // Evento de editar tarea
       div.querySelector(".btn-editar-tarea").addEventListener("click", () => {
         const contenedor = div.querySelector(".contenido-tarea");
         contenedor.innerHTML = `
@@ -475,6 +564,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         const form = contenedor.querySelector(".form-editar-tarea");
 
+        // Evento de guardar cambios
         form.addEventListener("submit", async (e) => {
           e.preventDefault();
           const datos = new FormData(form);
@@ -489,6 +579,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           await renderizarTareas();
         });
 
+        // Evento de cancelar
         contenedor.querySelector(".btn-cancelar").addEventListener("click", renderizarTareas);
       });
 
@@ -501,7 +592,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await renderizarTareas();
 });
 
-
+/*
 // --- CARGAR PROYECTOS PROPIOS EN INICIO ---
 document.addEventListener('DOMContentLoaded', () => {
   if (document.title === "Inicio") {
@@ -612,14 +703,4 @@ document.addEventListener('DOMContentLoaded', () => {
     cargarResumenInicio();
   }
 });
-
-
-// --- INICIALIZACIÓN ---
-document.addEventListener("DOMContentLoaded", () => {
-  protegerRuta();
-  if (usuarioActual && usuarioActual.usuario) {
-    mostrarProyectos(usuarioActual.usuario);
-  } else {
-    window.location.href = "login.html";
-  }
-});
+*/
