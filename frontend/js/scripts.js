@@ -592,119 +592,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   await renderizarTareas();
 });
 
-/*
-// --- CARGAR PROYECTOS PROPIOS EN INICIO ---
-document.addEventListener('DOMContentLoaded', () => {
-  if (document.title === "Inicio") {
-    const resumenTareas = document.getElementById("resumen-tareas");
-
-    async function cargarResumenTareas() {
-      const proyectosRef = collection(db, "proyectos");
-      const tareasRef = collection(db, "tareas");
-
-      const qProyectos = query(proyectosRef, where("creadoPor", "==", usuarioActual.usuario));
-      const proyectosSnap = await getDocs(qProyectos);
-      const tareasSnap = await getDocs(tareasRef);
-
-      const idNombreProyecto = {};
-      proyectosSnap.forEach(proy => idNombreProyecto[proy.id] = proy.data().nombre);
-
-      const tareasPendientes = [];
-      tareasSnap.forEach(tareaDoc => {
-        const tarea = tareaDoc.data();
-        if (tarea.creadaPor === usuarioActual.usuario && !tarea.completada) {
-          tareasPendientes.push({
-            ...tarea,
-            nombreProyecto: idNombreProyecto[tarea.idProyecto]
-          });
-        }
-      });
-
-      if (tareasPendientes.length === 0) {
-        resumenTareas.innerHTML = "<li class='text-muted'>No tienes tareas pendientes.</li>";
-      } else {
-        tareasPendientes.slice(0, 10).forEach((tarea, i) => {
-          const li = document.createElement("li");
-          li.innerHTML = `${tarea.nombre} <strong>(Proyecto: ${tarea.nombreProyecto})</strong>`;
-          resumenTareas.appendChild(li);
-        });
-      }
-    }
-
-    cargarResumenTareas();
-  }
-});
-
-// --- CARGAR TAREAS Y COLABORACIONES EN INICIO ---
-document.addEventListener('DOMContentLoaded', () => {
-  if (document.title === "Inicio") {
-    const resumenTareas = document.getElementById("resumen-tareas");
-    const seccionColaboraciones = document.getElementById("colaboraciones");
-
-    async function cargarResumenInicio() {
-      const proyectosRef = collection(db, "proyectos");
-      const tareasRef = collection(db, "tareas");
-
-      const proyectosSnap = await getDocs(proyectosRef);
-      const tareasSnap = await getDocs(tareasRef);
-
-      const tareasPendientes = [];
-      const colaboraciones = [];
-
-      proyectosSnap.forEach((proyDoc) => {
-        const proyecto = proyDoc.data();
-        const idProyecto = proyDoc.id;
-
-        tareasSnap.forEach((tareaDoc) => {
-          const tarea = tareaDoc.data();
-          if (tarea.idProyecto === idProyecto && !tarea.completada) {
-            // Tareas propias
-            if (tarea.creadaPor === usuarioActual.usuario) {
-              tareasPendientes.push({
-                ...tarea,
-                nombreProyecto: proyecto.nombre
-              });
-            }
-            // Tareas colaborativas
-            if (Array.isArray(proyecto.colaboradores) && proyecto.colaboradores.includes(usuarioActual.usuario)) {
-              colaboraciones.push({
-                ...tarea,
-                nombreProyecto: proyecto.nombre,
-                creadorProyecto: proyecto.creadoPor
-              });
-            }
-          }
-        });
-      });
-
-      // Mostrar tareas propias
-      if (tareasPendientes.length === 0) {
-        resumenTareas.innerHTML = "<li class='text-muted'>No tienes tareas pendientes.</li>";
-      } else {
-        tareasPendientes.slice(0, 10).forEach((tarea) => {
-          const li = document.createElement("li");
-          li.innerHTML = `${tarea.nombre} <strong>(Proyecto: ${tarea.nombreProyecto})</strong>`;
-          resumenTareas.appendChild(li);
-        });
-      }
-
-      // Mostrar colaboraciones
-      if (colaboraciones.length === 0) {
-        seccionColaboraciones.innerHTML = "<li class='text-muted'>No colaboras en ningún proyecto por ahora.</li>";
-      } else {
-        colaboraciones.slice(0, 10).forEach((tarea) => {
-          const li = document.createElement("li");
-          li.innerHTML = `${tarea.nombre} <strong>(Proyecto: ${tarea.nombreProyecto})</strong> <span class="text-muted">[Creado por: ${tarea.creadorProyecto}]</span>`;
-          seccionColaboraciones.appendChild(li);
-        });
-      }
-    }
-
-    cargarResumenInicio();
-  }
-});
-*/
-
 // --- CALENDARIO PEQUEÑO EN index.html ---
 document.addEventListener("DOMContentLoaded", async () => {
   if (document.title !== "Inicio") return;
@@ -871,7 +758,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     let html = '<div class="row">';
     for (let i = 0; i < primerColumna; i++) {
-      html += '<div class="col day"></div>';
+      html += '<div class="col day-grande"></div>';
     }
 
     let celda = primerColumna;
@@ -883,11 +770,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         <div class="task">
           ${t.nombre}<br>
           <small><strong>Proyecto: ${t.proyecto}</small></strong><br>
-          <small>Creado por: ${t.creador}</small>
+          <small>Creado por ${t.creador}</small>
         </div>
       `).join("");
 
-      html += `<div class="col day"><strong>${dia}</strong>${contenidoTareas}</div>`;
+      html += `<div class="col day-grande"><strong>${dia}</strong>${contenidoTareas}</div>`;
       celda++;
 
       if (celda % 7 === 0 && dia !== diasEnMes) {
@@ -898,7 +785,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (celda % 7 !== 0) {
       const vacios = 7 - (celda % 7);
       for (let i = 0; i < vacios; i++) {
-        html += '<div class="col day"></div>';
+        html += '<div class="col day-grande"></div>';
       }
     }
 
