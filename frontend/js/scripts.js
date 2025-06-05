@@ -704,3 +704,227 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 */
+
+// --- CALENDARIO PEQUEÑO EN index.html ---
+document.addEventListener("DOMContentLoaded", async () => {
+  if (document.title !== "Inicio") return;
+
+  const contenedor = document.getElementById("calendario-pequeno");
+  const spanNombreMes = document.getElementById("nombreMes");
+  const btnAnterior = document.getElementById("btnMesAnterior");
+  const btnSiguiente = document.getElementById("btnMesSiguiente");
+
+  const diasSemana = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+  const nombresMes = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+  let mesActual = new Date().getMonth();
+  let anioActual = new Date().getFullYear();
+
+  const tareasSnap = await getDocs(collection(db, "tareas"));
+  const proyectosSnap = await getDocs(collection(db, "proyectos"));
+
+  // Determinar proyectos del usuario, tanto propios como colaborativos
+  const proyectosPermitidos = new Set();
+  proyectosSnap.forEach(doc => {
+    const data = doc.data();
+    const id = doc.id;
+    if (data.creadoPor === usuarioActual.usuario || (data.colaboradores || []).includes(usuarioActual.usuario)) {
+      proyectosPermitidos.add(id);
+    }
+  });
+
+  // Guardar tareas por mes
+  const tareasPorFecha = {};
+  tareasSnap.forEach(doc => {
+    const tarea = doc.data();
+    if (!proyectosPermitidos.has(tarea.idProyecto)) return;
+    const fecha = new Date(tarea.fechaLimite);
+    const key = `${fecha.getFullYear()}-${fecha.getMonth()}-${fecha.getDate()}`;
+    tareasPorFecha[key] = true;
+  });
+
+  // Renderizar calendario pequeño
+  function renderizarCalendario(mes, anio) {
+    spanNombreMes.textContent = `${nombresMes[mes]} ${anio}`;
+
+    const primerDia = new Date(anio, mes, 1).getDay(); 
+    const diasEnMes = new Date(anio, mes + 1, 0).getDate();
+
+    let html = '<div class="row">';
+    for (let dia of diasSemana) {
+      html += `<div class="col day day-name">${dia}</div>`;
+    }
+    html += '</div>';
+
+    const primerColumna = (primerDia + 6) % 7;
+
+    let celda = 0;
+    html += '<div class="row">';
+
+    for (let i = 0; i < primerColumna; i++) {
+      html += '<div class="col day"></div>';
+      celda++;
+    }
+
+    for (let dia = 1; dia <= diasEnMes; dia++) {
+      const key = `${anio}-${mes}-${dia}`;
+      const clase = tareasPorFecha[key] ? "day marked" : "day";
+      html += `<div class="col ${clase}">${dia}</div>`;
+      celda++;
+
+      if (celda % 7 === 0 && dia !== diasEnMes) {
+        html += '</div><div class="row">';
+      }
+    }
+
+    if (celda % 7 !== 0) {
+      const vacios = 7 - (celda % 7);
+      for (let i = 0; i < vacios; i++) {
+        html += '<div class="col day"></div>';
+      }
+    }
+
+    html += '</div>';
+    contenedor.innerHTML = html;
+  }
+
+  // Evento botón mes anterior
+  btnAnterior.addEventListener("click", () => {
+    mesActual--;
+    if (mesActual < 0) {
+      mesActual = 11;
+      anioActual--;
+    }
+    renderizarCalendario(mesActual, anioActual);
+  });
+
+  // Evento botón mes siguiente
+  btnSiguiente.addEventListener("click", () => {
+    mesActual++;
+    if (mesActual > 11) {
+      mesActual = 0;
+      anioActual++;
+    }
+    renderizarCalendario(mesActual, anioActual);
+  });
+
+  renderizarCalendario(mesActual, anioActual);
+});
+
+// ---  CALENDARIO GRANDE EN calendario.html ---
+document.addEventListener("DOMContentLoaded", async () => {
+  if (document.title !== "Calendario") return;
+
+  const contenedor = document.getElementById("contenedor-calendario");
+  const tituloMes = document.getElementById("titulo-mes");
+  const btnAnterior = document.getElementById("mes-anterior");
+  const btnSiguiente = document.getElementById("mes-siguiente");
+
+  const diasSemana = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+  const nombresMes = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+  let mesActual = new Date().getMonth();
+  let anioActual = new Date().getFullYear();
+
+  const tareasSnap = await getDocs(collection(db, "tareas"));
+  const proyectosSnap = await getDocs(collection(db, "proyectos"));
+
+  // Proyectos permitidos
+  const proyectosPermitidos = new Map(); // Map ID => nombre
+  proyectosSnap.forEach(doc => {
+    const data = doc.data();
+    if (data.creadoPor === usuarioActual.usuario || (data.colaboradores || []).includes(usuarioActual.usuario)) {
+      proyectosPermitidos.set(doc.id, data.nombre);
+    }
+  });
+
+  // Agrupar tareas por día
+  const tareasPorDia = {};
+  tareasSnap.forEach(doc => {
+    const tarea = doc.data();
+    if (!proyectosPermitidos.has(tarea.idProyecto)) return;
+
+    const fecha = new Date(tarea.fechaLimite);
+    const y = fecha.getFullYear(), m = fecha.getMonth(), d = fecha.getDate();
+    const clave = `${y}-${m}-${d}`;
+
+    if (!tareasPorDia[clave]) tareasPorDia[clave] = [];
+      const proyectoNombre = proyectosPermitidos.get(tarea.idProyecto);
+      const proyectoDoc = proyectosSnap.docs.find(d => d.id === tarea.idProyecto);
+      const creador = proyectoDoc?.data().creadoPor || "desconocido";
+
+      tareasPorDia[clave].push({
+        nombre: tarea.nombre,
+        proyecto: proyectoNombre,
+        creador: creador === usuarioActual.usuario ? "ti" : creador
+      });
+  });
+
+  // Renderizar calendario grande
+  function renderizarCalendarioGrande(mes, anio) {
+    tituloMes.textContent = `${nombresMes[mes]} ${anio}`;
+    const primerDia = new Date(anio, mes, 1).getDay(); 
+    const diasEnMes = new Date(anio, mes + 1, 0).getDate();
+    const primerColumna = (primerDia + 6) % 7;
+
+    let html = '<div class="row">';
+    for (let i = 0; i < primerColumna; i++) {
+      html += '<div class="col day"></div>';
+    }
+
+    let celda = primerColumna;
+
+    for (let dia = 1; dia <= diasEnMes; dia++) {
+      const clave = `${anio}-${mes}-${dia}`;
+      const tareas = tareasPorDia[clave] || [];
+      let contenidoTareas = tareas.map(t => `
+        <div class="task">
+          ${t.nombre}<br>
+          <small><strong>Proyecto: ${t.proyecto}</small></strong><br>
+          <small>Creado por: ${t.creador}</small>
+        </div>
+      `).join("");
+
+      html += `<div class="col day"><strong>${dia}</strong>${contenidoTareas}</div>`;
+      celda++;
+
+      if (celda % 7 === 0 && dia !== diasEnMes) {
+        html += '</div><div class="row">';
+      }
+    }
+
+    if (celda % 7 !== 0) {
+      const vacios = 7 - (celda % 7);
+      for (let i = 0; i < vacios; i++) {
+        html += '<div class="col day"></div>';
+      }
+    }
+
+    html += '</div>';
+    contenedor.innerHTML = html;
+  }
+
+  // Evento botón mes anterior
+  btnAnterior.addEventListener("click", () => {
+    mesActual--;
+    if (mesActual < 0) {
+      mesActual = 11;
+      anioActual--;
+    }
+    renderizarCalendarioGrande(mesActual, anioActual);
+  });
+
+  // Evento botón mes siguiente
+  btnSiguiente.addEventListener("click", () => {
+    mesActual++;
+    if (mesActual > 11) {
+      mesActual = 0;
+      anioActual++;
+    }
+    renderizarCalendarioGrande(mesActual, anioActual);
+  });
+
+  renderizarCalendarioGrande(mesActual, anioActual);
+});

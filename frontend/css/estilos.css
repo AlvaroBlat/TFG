@@ -69,3 +69,26 @@ body {
 .btn-registro {
     width: 100%;
 }
+
+.small-calendar {
+    padding: 10px;
+    margin-top: 20px;
+}
+
+.day {
+    border: 1px solid #dee2e6;
+    height: 50px;
+    position: relative;
+    text-align: center;
+}
+
+.day-name {
+    background-color: lightyellow;
+    color: black;
+    font-weight: bold;
+}
+
+.marked {
+    background-color: #09f;
+    color: white;
+}
