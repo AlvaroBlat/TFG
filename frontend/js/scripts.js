@@ -259,6 +259,7 @@ async function mostrarProyectos(usuario) {
       });
     });
 
+    // Listener para eliminar proyecto
     document.querySelectorAll(".btn-eliminar-proyecto").forEach(btn => {
       btn.addEventListener("click", async () => {
         const id = btn.getAttribute("data-id");
