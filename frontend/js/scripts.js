@@ -637,12 +637,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     contenedorTareas.innerHTML = "";
 
     tareas.forEach(async (tarea) => {
+      
       const fecha = new Date(tarea.fechaLimite);
       const fechaFormateada = fecha.toLocaleDateString();
       const prioridadTexto = textoPrioridades[tarea.prioridad] || "Sin prioridad";
       const clases = ["fila-tarea"];
       if (tarea.completada) clases.push("completada");
 
+      const ahora = new Date();
+      const fechaLimite = new Date(tarea.fechaLimite);
+      const diasRestantes = (fechaLimite - ahora) / (1000 * 60 * 60 * 24);
+
+      if (!tarea.completada) {
+        if (diasRestantes <= 0) {
+          clases.push("vencida"); // rojo
+        } else if (diasRestantes <= 2) {
+          clases.push("por-vencer"); // amarillo
+        }
+      }
+
+
+      
       const div = document.createElement("div");
       div.className = clases.join(" ");
       div.innerHTML = `
@@ -707,7 +722,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         await addDoc(collection(db, "comentarios"), {
           idTarea: tarea.id,
           usuario: usuarioActual.usuario,
-          mensaje,
+          mensaje: mensaje,
           fecha: new Date()
         });
 

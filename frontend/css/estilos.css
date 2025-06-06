@@ -169,3 +169,14 @@ body.modo-oscuro .btn:hover {
   margin-bottom: 4px;
   font-size: 0.85em;
 }
+
+.fila-tarea.vencida {
+  background-color: #da737c;
+  border-color: #e23042;
+}
+
+.fila-tarea.por-vencer {
+  background-color: #e1cb82;
+  border-color: #ffeeba;
+}
+
