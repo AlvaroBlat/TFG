@@ -1,7 +1,7 @@
 // scripts.js
 
 // --- IMPORTS DE FIREBASE ---
-import { collection, getDocs, query, where, doc, addDoc, updateDoc, deleteDoc, getDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+import { collection, getDocs, query, where, doc, addDoc, updateDoc, deleteDoc, getDoc, arrayUnion, arrayRemove, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 import { db } from '../js/firebase.js';
 
 // --- PROTECCION SESIÓN NO INICIADA ---
@@ -12,11 +12,67 @@ function protegerRuta() {
   if (rutasPublicas.includes(rutaActual)) return;
 
   const usuarioActual = JSON.parse(localStorage.getItem("usuarioActual"));
+  
   // Verificar si el usuario ha iniciado sesión
   if (!usuarioActual || !usuarioActual.usuario) {
     console.warn("No hay sesión activa. Redirigiendo a login...");
     window.location.href = "login.html";
   }
+}
+
+// --- FUNCIÓN PARA ACTUALIZAR ULTIMA CONEXIÓN ---
+async function actualizarUltimaConexion(usuarioId) {
+  const usuarioRef = doc(db, "usuarios", usuarioId);
+  const ultimaConexion = new Date();
+  updateDoc(usuarioRef, {
+    ultimaConexion: serverTimestamp()
+  });
+  console.log(ultimaConexion);
+}
+
+// --- FUNCIÓN PARA CREAR AVISO DE NUEVOS PROYECTOS ---
+function mostrarAviso(proyectos) {
+  const contenedor = document.createElement("div");
+  contenedor.style.position = "fixed";
+  contenedor.style.bottom = "20px";
+  contenedor.style.right = "20px";
+  contenedor.style.maxWidth = "300px";
+  contenedor.style.padding = "15px";
+  contenedor.style.backgroundColor = "#f0f8ff";
+  contenedor.style.border = "1px solid #007bff";
+  contenedor.style.borderRadius = "8px";
+  contenedor.style.boxShadow = "0 0 10px rgba(0,0,0,0.2)";
+  contenedor.style.zIndex = "9999";
+
+  const encabezado = document.createElement("strong");
+  encabezado.textContent = "Desde tu última conexión:";
+  contenedor.appendChild(encabezado);
+
+  const lista = document.createElement("ul");
+  lista.style.paddingLeft = "18px";
+  proyectos.forEach(p => {
+    const li = document.createElement("li");
+    li.textContent = `Añadido a "${p.nombre}" por ${p.creador}`;
+    lista.appendChild(li);
+  });
+
+  contenedor.appendChild(lista);
+
+  const botonCerrar = document.createElement("button");
+  botonCerrar.textContent = "Cerrar";
+  botonCerrar.className = "btn btn-sm btn-outline-primary mt-2";
+  botonCerrar.onclick = () => contenedor.remove();
+  contenedor.appendChild(botonCerrar);
+
+  document.body.appendChild(contenedor);
+}
+
+// --- FUNCIÓN PARA ACTUALIZAR ULTIMA MODIFICACIÓN ---
+async function actualizarUltimaModificacion(idProyecto) {
+  const ref = doc(db, "proyectos", idProyecto);
+  await updateDoc(ref, {
+    ultimaModificacion: serverTimestamp()
+  });
 }
 
 // --- LOGIN ---
@@ -40,7 +96,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!resultado.empty) {
           const doc = resultado.docs[0];
           const datosUsuario = doc.data();
+          datosUsuario.id = doc.id;
+
           localStorage.setItem("usuarioActual", JSON.stringify(datosUsuario));
+          await actualizarUltimaConexion(doc.id);
           window.location.href = "index.html";
         } else {
           alert("Usuario o contraseña incorrectos");
@@ -96,6 +155,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!nuevoResultado.empty) {
           const doc = nuevoResultado.docs[0];
           localStorage.setItem("usuarioActual", JSON.stringify(doc.data()));
+          datosUsuario.id = doc.id;
         }
 
         window.location.href = "index.html";
@@ -110,6 +170,15 @@ document.addEventListener("DOMContentLoaded", () => {
 // --- DATOS USUARIO ---
 const usuarioActual = JSON.parse(localStorage.getItem("usuarioActual"));
 document.getElementById('nombre-usuario-nav').textContent = `${usuarioActual.nombre}`;
+
+// --- ACTUALIZAR ULTIMA CONEXIÓN ---
+
+/*
+if (usuarioActual?.id) {
+  actualizarUltimaConexion(usuarioActual.id);
+  console.log("usuarioActual:", usuarioActual.ultimaConexion);
+}
+*/
 
 // --- LOGOUT ---
 document.getElementById('logout')?.addEventListener('click', (e) => {
@@ -127,6 +196,43 @@ document.addEventListener("DOMContentLoaded", () => {
     window.location.href = "login.html";
   }
 });
+
+document.addEventListener("DOMContentLoaded", async () => {
+    if (document.title !== "Inicio") return;
+    const usuario = usuarioActual.usuario;
+    const usuariosSnap = await getDocs(query(collection(db, "usuarios"), where("usuario", "==", usuario)));
+    if (usuariosSnap.empty) return;
+
+    const usuarioDoc = usuariosSnap.docs[0];
+    console.log("usuarioDoc:", usuariosSnap.docs[0].data());
+    const ultimaConexion = usuarioDoc.data().ultimaConexion?.toDate?.() || null;
+    console.log("ultimaConexion 1:", ultimaConexion);
+    if (!ultimaConexion) return;
+
+    const proyectosSnap = await getDocs(collection(db, "proyectos"));
+    const nuevosProyectos = [];
+
+    proyectosSnap.forEach(doc => {
+      const data = doc.data();
+      const colaboradoresInfo = data.colaboradoresInfo || {};
+
+      if (colaboradoresInfo[usuario] &&  data.creadoPor !== usuario) {
+        const fechaIncorporacion = colaboradoresInfo[usuario].toDate();
+        if (fechaIncorporacion > ultimaConexion) {
+          nuevosProyectos.push({
+            nombre: data.nombre,
+            creador: data.creadoPor
+          });
+        }
+      }
+    });
+    console.log(nuevosProyectos.length);
+    if (nuevosProyectos.length > 0) {
+      mostrarAviso(nuevosProyectos);
+    }
+});
+
+
 
 // --- AGREGAR PROYECTO ---
 document.getElementById("botonAñadirProyecto")?.addEventListener("click", async () => {
@@ -179,6 +285,19 @@ async function mostrarProyectos(usuario) {
       ? proyecto.colaboradores.join(", ")
       : "Sin colaboradores";
 
+      const privadoCompartido = (proyecto.colaboradores?.length > 0)
+        ? "Compartido"
+        : "Privado";
+
+      const iconoEstado = (proyecto.colaboradores?.length > 0)
+        ? `<i class="fas fa-users text-primary" title="Proyecto compartido"></i>`
+        : `<i class="fas fa-lock text-secondary" title="Proyecto privado"></i>`;
+
+      const ultimaMod = proyecto.ultimaModificacion?.toDate
+        ? proyecto.ultimaModificacion.toDate().toLocaleString()
+        : "Sin cambios recientes";
+
+
     // Crear el HTML para mostrar el proyecto
     const html = `
       <div class="project mb-4">
@@ -186,6 +305,8 @@ async function mostrarProyectos(usuario) {
         <p>Descripción: ${proyecto.descripcion || "Sin descripción."}</p>
         <p>Creado por: ${proyecto.creadoPor}</p>
         <p><strong>Colaboradores:</strong> ${colaboradoresTexto}</p>
+        <p><strong>Estado:</strong> ${privadoCompartido} ${iconoEstado}</p>
+        <p><strong>Última modificación:</strong> ${ultimaMod}</p>
 
         ${!esInicio && esCreador ? `
           <button class="btn btn-success btn-sm btn-colaboracion-proyecto" data-id="${idProyecto}">Colaboración</button>
@@ -250,6 +371,7 @@ async function mostrarProyectos(usuario) {
 
         try {
           await addDoc(collection(db, "tareas"), tarea);
+          await actualizarUltimaModificacion(tarea.idProyecto);
           alert("Tarea añadida correctamente.");
           window.location.reload();
         } catch (err) {
@@ -327,6 +449,7 @@ async function mostrarProyectos(usuario) {
           nombre: nuevoNombre,
           descripcion: nuevaDescripcion
         });
+        actualizarUltimaModificacion(idProyecto);
         alert("Proyecto actualizado.");
         window.location.reload();
       } catch (err) {
@@ -399,9 +522,16 @@ async function mostrarProyectos(usuario) {
           const seleccionados = Array.from(modal.querySelector("#select-nuevos").selectedOptions).map(opt => opt.value);
           if (seleccionados.length > 0) {
             try {
-              await updateDoc(proyectoRef, {
-                colaboradores: arrayUnion(...seleccionados)
+              const actualizaciones = {};
+              seleccionados.forEach(colaborador => {
+                actualizaciones[`colaboradoresInfo.${colaborador}`] = serverTimestamp();
               });
+
+              await updateDoc(proyectoRef, {
+                colaboradores: arrayUnion(...seleccionados),
+                ...actualizaciones
+              });
+
               alert("Colaboradores añadidos.");
               window.location.reload();
             } catch (err) {
@@ -533,6 +663,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       div.querySelector(".btn-completar-tarea").addEventListener("click", async () => {
         const tareaRef = doc(db, "tareas", tarea.id);
         await updateDoc(tareaRef, { completada: !tarea.completada });
+        await actualizarUltimaModificacion(tarea.idProyecto);
         await renderizarTareas();
       });
 
@@ -541,6 +672,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (confirm("¿Seguro que deseas eliminar esta tarea?")) {
           const tareaRef = doc(db, "tareas", tarea.id);
           await deleteDoc(tareaRef);
+          await actualizarUltimaModificacion(tarea.idProyecto);
           await renderizarTareas();
         }
       });
@@ -577,6 +709,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           };
           const tareaRef = doc(db, "tareas", tarea.id);
           await updateDoc(tareaRef, tareaActualizada);
+          await actualizarUltimaModificacion(tarea.idProyecto);
           await renderizarTareas();
         });
 
@@ -815,4 +948,27 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   renderizarCalendarioGrande(mesActual, anioActual);
+});
+
+// Cargar tema desde localStorage
+function aplicarTemaGuardado() {
+  const modoOscuro = localStorage.getItem("modoOscuro") === "true";
+  document.body.classList.toggle("modo-oscuro", modoOscuro);
+  document.getElementById("icono-tema").className = modoOscuro ? "fas fa-sun" : "fas fa-moon";
+}
+
+// Cambiar tema
+document.addEventListener("DOMContentLoaded", () => {
+  aplicarTemaGuardado();
+
+  const botonTema = document.getElementById("toggle-tema");
+  if (botonTema) {
+    botonTema.addEventListener("click", () => {
+      const body = document.body;
+      body.classList.toggle("modo-oscuro");
+      const esOscuro = body.classList.contains("modo-oscuro");
+      localStorage.setItem("modoOscuro", esOscuro);
+      document.getElementById("icono-tema").className = esOscuro ? "fas fa-sun" : "fas fa-moon";
+    });
+  }
 });

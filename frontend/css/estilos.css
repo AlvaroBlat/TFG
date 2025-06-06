@@ -122,3 +122,45 @@ body {
     align-items: center;
     margin-bottom: 10px;
 }
+body.modo-oscuro {
+    background-color: #1e1e1e;
+    color: #f1f1f1;
+}
+
+body.modo-oscuro .project,
+body.modo-oscuro .fila-tarea,
+body.modo-oscuro .contenedor-login,
+body.modo-oscuro .contenedor-registro,
+body.modo-oscuro .day,
+body.modo-oscuro .day-grande,
+body.modo-oscuro .form-control,
+body.modo-oscuro .calendar-header,
+body.modo-oscuro .task,
+body.modo-oscuro .form-select {
+    background-color: #1e1e1e;
+    color: #f1f1f1;
+    border-color: #444;
+}
+
+body.modo-oscuro .marked {
+    background-color: #0af;
+    color: white;
+}
+
+body.modo-oscuro .day-name,
+body.modo-oscuro label,
+body.modo-oscuro h2,
+body.modo-oscuro h5 {
+    background-color: #1e1e1e;
+    color: #f1f1f1;
+}
+
+body.modo-oscuro .btn {
+    background-color: #2c2c2c;
+    color: #f1f1f1;
+    border-color: #666;
+}
+
+body.modo-oscuro .btn:hover {
+    background-color: #3c3c3c;
+}
