@@ -164,3 +164,8 @@ body.modo-oscuro .btn {
 body.modo-oscuro .btn:hover {
     background-color: #3c3c3c;
 }
+
+.comentarios p {
+  margin-bottom: 4px;
+  font-size: 0.85em;
+}

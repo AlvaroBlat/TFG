@@ -631,15 +631,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Renderiza las tareas
   const renderizarTareas = async () => {
     const tareas = aplicarFiltros(await obtenerTareas());
+    //console.log(tareas)
+    // Ordenar por fecha
+    tareas.sort((a, b) => new Date(a.fechaLimite) - new Date(b.fechaLimite));
     contenedorTareas.innerHTML = "";
 
-    tareas.forEach((tarea) => {
+    tareas.forEach(async (tarea) => {
       const fecha = new Date(tarea.fechaLimite);
       const fechaFormateada = fecha.toLocaleDateString();
       const prioridadTexto = textoPrioridades[tarea.prioridad] || "Sin prioridad";
       const clases = ["fila-tarea"];
       if (tarea.completada) clases.push("completada");
-      
+
       const div = document.createElement("div");
       div.className = clases.join(" ");
       div.innerHTML = `
@@ -653,13 +656,70 @@ document.addEventListener("DOMContentLoaded", async () => {
           </div>
           <div>
             <button class="btn btn-success btn-sm btn-completar-tarea"><i class="fas fa-check"></i> ${tarea.completada ? "Desmarcar" : "Completar"}</button>
-            <button class="btn btn-primary btn-sm btn-editar-tarea"><i class="fas fa-edit"></i> Editar</button>
+            <button class="btn btn-warning btn-sm btn-editar-tarea"><i class="fas fa-edit"></i> Editar</button>
             <button class="btn btn-danger btn-sm btn-eliminar-tarea"><i class="fas fa-trash"></i> Eliminar</button>
           </div>
         </div>
       `;
 
-      // Evento de completar tarea
+      // Chat de comentarios
+      const chatDiv = document.createElement("div");
+      chatDiv.className = "mt-2";
+
+      const comentariosContenedor = document.createElement("div");
+      comentariosContenedor.className = "comentarios";
+      comentariosContenedor.innerHTML = "<strong>Comentarios:</strong><br>";
+
+      const comentariosSnap = await getDocs(query(collection(db, "comentarios"), where("idTarea", "==", tarea.id)));
+      const comentarios = [];
+      comentariosSnap.forEach(doc => {
+        const comentario = doc.data();
+        comentario.fechaObj = comentario.fecha?.toDate?.();
+        comentarios.push(comentario);
+      });
+
+      // Ordenar por fecha
+      comentarios.sort((a, b) => a.fechaObj - b.fechaObj);
+
+      // Renderizar ordenadamente
+      comentarios.forEach(comentario => {
+        const fecha = comentario.fechaObj?.toLocaleString() || "";
+        const p = document.createElement("p");
+        p.innerHTML = `<strong>${comentario.usuario}</strong> [${fecha}]: ${comentario.mensaje}`;
+        comentariosContenedor.appendChild(p);
+      });
+
+
+      const formComentario = document.createElement("form");
+      formComentario.innerHTML = `
+        <div class="input-group mt-1">
+          <input type="text" class="form-control form-control-sm" placeholder="Escribe un comentario..." required>
+          <button class="btn btn-sm btn-primary" type="submit">Enviar</button>
+        </div>
+      `;
+
+      formComentario.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const input = formComentario.querySelector("input");
+        const mensaje = input.value.trim();
+        if (!mensaje) return;
+
+        await addDoc(collection(db, "comentarios"), {
+          idTarea: tarea.id,
+          usuario: usuarioActual.usuario,
+          mensaje,
+          fecha: new Date()
+        });
+
+        input.value = "";
+        await renderizarTareas();
+      });
+
+      chatDiv.appendChild(comentariosContenedor);
+      chatDiv.appendChild(formComentario);
+      div.appendChild(chatDiv);
+
+      // Listener de completar tarea
       div.querySelector(".btn-completar-tarea").addEventListener("click", async () => {
         const tareaRef = doc(db, "tareas", tarea.id);
         await updateDoc(tareaRef, { completada: !tarea.completada });
@@ -667,7 +727,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         await renderizarTareas();
       });
 
-      // Evento de eliminar tarea
+      // Listener de eliminar tarea
       div.querySelector(".btn-eliminar-tarea").addEventListener("click", async () => {
         if (confirm("¿Seguro que deseas eliminar esta tarea?")) {
           const tareaRef = doc(db, "tareas", tarea.id);
@@ -677,27 +737,25 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       });
 
-      // Evento de editar tarea
-      div.querySelector(".btn-editar-tarea").addEventListener("click", () => {
-        const contenedor = div.querySelector(".contenido-tarea");
-        contenedor.innerHTML = `
-          <form class="form-editar-tarea mt-2">
-            <input type="text" name="nombre" class="form-control mb-2" value="${tarea.nombre}" required>
-            <textarea name="descripcion" class="form-control mb-2">${tarea.descripcion || ""}</textarea>
-            <input type="date" name="fechaLimite" class="form-control mb-2" value="${tarea.fechaLimite}">
-            <select name="prioridad" class="form-select mb-2">
-              <option value="0" ${tarea.prioridad === 0 ? "selected" : ""}>Baja</option>
-              <option value="1" ${tarea.prioridad === 1 ? "selected" : ""}>Media</option>
-              <option value="2" ${tarea.prioridad === 2 ? "selected" : ""}>Alta</option>
-            </select>
-            <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
-            <button type="button" class="btn btn-secondary btn-sm btn-cancelar">Cancelar</button>
-          </form>
-        `;
+      // Listener de editar tarea
+        div.querySelector(".btn-editar-tarea").addEventListener("click", () => {
+          const contenedor = div.querySelector(".contenido-tarea");
+          contenedor.innerHTML = `
+            <form class="form-editar-tarea mt-2">
+              <input type="text" name="nombre" class="form-control mb-2" value="${tarea.nombre}" required>
+              <textarea name="descripcion" class="form-control mb-2">${tarea.descripcion || ""}</textarea>
+              <input type="date" name="fechaLimite" class="form-control mb-2" value="${tarea.fechaLimite}">
+              <select name="prioridad" class="form-select mb-2">
+                <option value="0" ${tarea.prioridad === 0 ? "selected" : ""}>Baja</option>
+                <option value="1" ${tarea.prioridad === 1 ? "selected" : ""}>Media</option>
+                <option value="2" ${tarea.prioridad === 2 ? "selected" : ""}>Alta</option>
+              </select>
+              <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
+              <button type="button" class="btn btn-secondary btn-sm btn-cancelar">Cancelar</button>
+            </form>
+          `;
 
         const form = contenedor.querySelector(".form-editar-tarea");
-
-        // Evento de guardar cambios
         form.addEventListener("submit", async (e) => {
           e.preventDefault();
           const datos = new FormData(form);
@@ -713,13 +771,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           await renderizarTareas();
         });
 
-        // Evento de cancelar
         contenedor.querySelector(".btn-cancelar").addEventListener("click", renderizarTareas);
-      });
-
-      contenedorTareas.appendChild(div);
     });
-  };
+
+    contenedorTareas.appendChild(div);
+  });
+}
 
   filtroPrioridad.addEventListener("change", renderizarTareas);
   filtroFecha.addEventListener("change", renderizarTareas);
