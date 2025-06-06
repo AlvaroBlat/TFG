@@ -1044,3 +1044,60 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+document.addEventListener("DOMContentLoaded", async () => {
+  if (!window.location.pathname.includes("perfil.html")) return;
+
+  protegerRuta();
+  const usuarioActual = JSON.parse(localStorage.getItem("usuarioActual"));
+  if (!usuarioActual) return;
+
+  // Mostrar nombre arriba
+  document.getElementById("nombre-usuario-nav").textContent = usuarioActual.nombre;
+
+  // Mostrar datos en el perfil
+  // Rellenar información
+document.getElementById("perfil-usuario").textContent = usuarioActual.usuario;
+document.getElementById("perfil-correo").textContent = usuarioActual.correo;
+
+// Listar proyectos
+const proyectosSnap = await getDocs(collection(db, "proyectos"));
+const lista = document.getElementById("perfil-proyectos");
+
+proyectosSnap.forEach(doc => {
+  const p = doc.data();
+  if (p.creadoPor === usuarioActual.usuario || (Array.isArray(p.colaboradores) && p.colaboradores.includes(usuarioActual.usuario))) {
+    const li = document.createElement("li");
+    li.className = "list-group-item";
+    li.innerHTML = `<strong>${p.nombre}</strong><br><small>${p.descripcion || "Sin descripción"}</small>`;
+    lista.appendChild(li);
+  }
+});
+
+// Actualizar contraseña
+const form = document.getElementById("form-actualizar-contrasena");
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const nueva = document.getElementById("nuevaContrasena").value.trim();
+  const confirmar = document.getElementById("confirmarContrasena").value.trim();
+  const error = document.getElementById("mensaje-error");
+  const ok = document.getElementById("mensaje-ok");
+
+  error.classList.add("d-none");
+  ok.classList.add("d-none");
+
+  if (!nueva || !confirmar || nueva !== confirmar) {
+    error.classList.remove("d-none");
+    return;
+  }
+
+  const q = query(collection(db, "usuarios"), where("usuario", "==", usuarioActual.usuario));
+  const snap = await getDocs(q);
+  if (!snap.empty) {
+    const ref = doc(db, "usuarios", snap.docs[0].id);
+    await updateDoc(ref, { contrasena: nueva });
+    ok.classList.remove("d-none");
+  }
+});
+
+});
