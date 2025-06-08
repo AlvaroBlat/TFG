@@ -275,9 +275,16 @@ async function mostrarProyectos(usuario) {
   contenedor.innerHTML = "";
   const proyectosMostrados = new Set();
 
-  const mostrarProyecto = (docSnap, esCreador) => {
+    const mostrarProyecto = async (docSnap, esCreador) => {
     const proyecto = docSnap.data();
     const idProyecto = docSnap.id;
+
+    const tareasSnap = await getDocs(query(collection(db, "tareas"), where("idProyecto", "==", idProyecto)));
+    const totalTareas = tareasSnap.size;
+    const tareasCompletadas = tareasSnap.docs.filter(doc => doc.data().completada).length;
+    const progreso = totalTareas > 0 ? Math.round((tareasCompletadas / totalTareas) * 100) : 0;
+    const esCompletado = totalTareas > 0 && tareasCompletadas === totalTareas;
+
     if (proyectosMostrados.has(idProyecto)) return;
     proyectosMostrados.add(idProyecto);
 
@@ -297,6 +304,19 @@ async function mostrarProyectos(usuario) {
         ? proyecto.ultimaModificacion.toDate().toLocaleString()
         : "Sin cambios recientes";
 
+      const barraProgresoHTML = totalTareas > 0 ? `
+        <div class="progress mb-2">
+          <div class="progress-bar ${esCompletado ? 'bg-success' : 'bg-info'}" role="progressbar" style="width: ${progreso}%;">
+            ${tareasCompletadas}/${totalTareas} tareas completadas
+          </div>
+        </div>
+      ` : `<p class="text-muted">Este proyecto aún no tiene tareas.</p>`;
+
+      const etiquetaCompletado = esCompletado
+        ? `<span class="badge bg-success">Completado</span>`
+        : "";
+
+
 
     // Crear el HTML para mostrar el proyecto
     const html = `
@@ -307,6 +327,9 @@ async function mostrarProyectos(usuario) {
         <p><strong>Colaboradores:</strong> ${colaboradoresTexto}</p>
         <p><strong>Estado:</strong> ${privadoCompartido} ${iconoEstado}</p>
         <p><strong>Última modificación:</strong> ${ultimaMod}</p>
+        <p>${barraProgresoHTML}</p>
+        <p>${etiquetaCompletado}</p>
+
 
         ${!esInicio && esCreador ? `
           <button class="btn btn-success btn-sm btn-colaboracion-proyecto" data-id="${idProyecto}">Colaboración</button>
@@ -316,6 +339,7 @@ async function mostrarProyectos(usuario) {
 
         ${!esInicio ? `
         <button class="btn btn-secondary btn-sm " data-bs-toggle="collapse" data-bs-target="#form-${idProyecto}">Añadir Tarea</button>
+        <button class="btn btn-info btn-sm btn-detalles-proyecto" data-id="${idProyecto}" data-nombre="${proyecto.nombre}">Consultar detalles</button>
         <div class="collapse mt-2" id="form-${idProyecto}">
           <form class="formulario-tarea" data-id-proyecto="${idProyecto}">
             <div class="mb-2">
@@ -349,8 +373,13 @@ async function mostrarProyectos(usuario) {
   };
 
   // Mostrar proyectos
-  snapCreados.forEach(doc => mostrarProyecto(doc, true));
-  snapColaborados.forEach(doc => mostrarProyecto(doc, false));
+  for (const doc of snapCreados.docs) {
+  await mostrarProyecto(doc, true);
+  }
+  for (const doc of snapColaborados.docs) {
+    await mostrarProyecto(doc, false);
+  }
+
 
   // Si no es la vista de inicio, estamos en la vista de proyectos, activamos listeners de botones
   if (!document.title.includes("Inicio")) {
@@ -380,6 +409,57 @@ async function mostrarProyectos(usuario) {
         }
       });
     });
+
+
+      document.querySelectorAll(".btn-detalles-proyecto").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const idProyecto = btn.getAttribute("data-id");
+          const nombreProyecto = btn.getAttribute("data-nombre");
+
+          // Obtener tareas del proyecto
+          const tareasSnap = await getDocs(query(collection(db, "tareas"), where("idProyecto", "==", idProyecto)));
+          const tareas = tareasSnap.docs.map(doc => doc.data());
+
+          // Crear contenido del modal
+          const tareasHTML = tareas.length
+            ? tareas.map(t => `
+              <li>
+                <strong>${t.nombre}</strong> (${t.completada ? "✅ Completada" : "🕒 Pendiente"})<br>
+                ${t.descripcion || "Sin descripción"}<br>
+                <small>Fecha límite: ${new Date(t.fechaLimite).toLocaleDateString()}</small>
+              </li>
+            `).join("")
+            : "<p>Este proyecto no tiene tareas aún.</p>";
+
+          const modal = document.createElement("div");
+          modal.classList.add("modal", "fade");
+          modal.setAttribute("tabindex", "-1");
+
+          modal.innerHTML = `
+            <div class="modal-dialog modal-lg">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Detalles del proyecto: ${nombreProyecto}</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                  <h6>Tareas asociadas:</h6>
+                  <ul>${tareasHTML}</ul>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+              </div>
+            </div>
+          `;
+
+          document.body.appendChild(modal);
+          const bsModal = new bootstrap.Modal(modal);
+          bsModal.show();
+
+          modal.addEventListener("hidden.bs.modal", () => modal.remove());
+        });
+      });
 
     // Listener para eliminar proyecto
     document.querySelectorAll(".btn-eliminar-proyecto").forEach(btn => {
