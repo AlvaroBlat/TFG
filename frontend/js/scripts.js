@@ -266,10 +266,22 @@ async function mostrarProyectos(usuario) {
   const qCreados = query(proyectosRef, where("creadoPor", "==", usuario));
   const qColaborados = query(proyectosRef, where("colaboradores", "array-contains", usuario));
 
-  const [snapCreados, snapColaborados] = await Promise.all([
-    getDocs(qCreados),
-    getDocs(qColaborados)
-  ]);
+  const proyectosMap = new Map();
+
+  [...(await getDocs(qCreados)).docs, ...(await getDocs(qColaborados)).docs].forEach(doc => {
+    const id = doc.id;
+    if (!proyectosMap.has(id)) {  
+      proyectosMap.set(id, doc);
+    }
+  });
+
+// Ordenar por última modificación (más reciente primero)
+const proyectosOrdenados = [...proyectosMap.values()].sort((a, b) => {
+  const fechaA = a.data().ultimaModificacion?.toDate?.() || new Date(0);
+  const fechaB = b.data().ultimaModificacion?.toDate?.() || new Date(0);
+  return fechaB - fechaA;
+});
+
 
   const contenedor = document.getElementById("lista-proyectos");
   //contenedor.innerHTML = "" ;
@@ -375,13 +387,10 @@ async function mostrarProyectos(usuario) {
   };
 
   // Mostrar proyectos
-  for (const doc of snapCreados.docs) {
-  await mostrarProyecto(doc, true);
+    for (const doc of proyectosOrdenados) {
+    const esCreador = doc.data().creadoPor === usuario;
+    await mostrarProyecto(doc, esCreador);
   }
-  for (const doc of snapColaborados.docs) {
-    await mostrarProyecto(doc, false);
-  }
-
 
   // Si no es la vista de inicio, estamos en la vista de proyectos, activamos listeners de botones
   if (!document.title.includes("Inicio")) {
@@ -678,7 +687,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         tareasSnap.forEach((tareaDoc) => {
           const tarea = tareaDoc.data();
           if (tarea.idProyecto === idProyecto) {
-            tareasAgrupadas.push({ ...tarea, id: tareaDoc.id, nombreProyecto: proyecto.nombre });
+            tareasAgrupadas.push({ ...tarea, id: tareaDoc.id, nombreProyecto: proyecto.nombre, creadorProyecto: proyecto.creadoPor });
           }
         });
       }
@@ -766,8 +775,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             ${!tarea.completada && diasRestantes > 0 && diasRestantes <= 2 ? '<span class="badge bg-warning text-dark ms-2">Fecha límite cerca</span>' : ''}
             <br>
             <small>
-              Prioridad: ${prioridadTexto} | Fecha límite: ${fechaFormateada} <br>
-              <strong>Proyecto: ${tarea.nombreProyecto}</strong>
+              Prioridad: ${prioridadTexto} | Fecha límite: ${fechaFormateada}<br>
+              <strong>Proyecto: ${tarea.nombreProyecto}</strong> (creado por ${tarea.creadorProyecto})
             </small>
           </div>
           <div>
