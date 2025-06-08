@@ -301,8 +301,10 @@ async function mostrarProyectos(usuario) {
         : `<i class="fas fa-lock text-secondary" title="Proyecto privado"></i>`;
 
       const ultimaMod = proyecto.ultimaModificacion?.toDate
-        ? proyecto.ultimaModificacion.toDate().toLocaleString()
-        : "Sin cambios recientes";
+      ? proyecto.ultimaModificacion.toDate().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
+        proyecto.ultimaModificacion.toDate().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+      : "Sin cambios recientes";
+
 
       const barraProgresoHTML = totalTareas > 0 ? `
         <div class="progress mb-2">
@@ -719,7 +721,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     tareas.forEach(async (tarea) => {
       
       const fecha = new Date(tarea.fechaLimite);
-      const fechaFormateada = fecha.toLocaleDateString();
+      const fechaFormateada = fecha.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
       const prioridadTexto = textoPrioridades[tarea.prioridad] || "Sin prioridad";
       const clases = ["fila-tarea"];
       if (tarea.completada) clases.push("completada");
@@ -743,9 +745,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       div.innerHTML = `
         <div class="d-flex align-items-center">
           <div class="flex-grow-1 contenido-tarea">
-            <strong>${tarea.nombre}:</strong> ${tarea.descripcion}<br>
+            <strong>${tarea.nombre}</strong>
+            : ${tarea.descripcion}
+            ${!tarea.completada && diasRestantes <= 0 ? '<span class="badge bg-danger ms-2">Vencida</span>' : ''}
+            ${!tarea.completada && diasRestantes > 0 && diasRestantes <= 2 ? '<span class="badge bg-warning text-dark ms-2">Fecha límite cerca</span>' : ''}
+            <br>
             <small>
-              Prioridad: ${prioridadTexto} | Fecha límite: ${fechaFormateada} | <strong>Proyecto: ${tarea.nombreProyecto}</strong><br>
+              Prioridad: ${prioridadTexto} | Fecha límite: ${fechaFormateada}
               Creado por: ${tarea.creadaPor}
             </small>
           </div>
@@ -761,10 +767,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const chatDiv = document.createElement("div");
       chatDiv.className = "mt-2";
 
-      const comentariosContenedor = document.createElement("div");
-      comentariosContenedor.className = "comentarios";
-      comentariosContenedor.innerHTML = "<strong>Comentarios:</strong><br>";
-
+      // Obtener comentarios
       const comentariosSnap = await getDocs(query(collection(db, "comentarios"), where("idTarea", "==", tarea.id)));
       const comentarios = [];
       comentariosSnap.forEach(doc => {
@@ -772,17 +775,61 @@ document.addEventListener("DOMContentLoaded", async () => {
         comentario.fechaObj = comentario.fecha?.toDate?.();
         comentarios.push(comentario);
       });
-
-      // Ordenar por fecha
       comentarios.sort((a, b) => a.fechaObj - b.fechaObj);
 
-      // Renderizar ordenadamente
-      comentarios.forEach(comentario => {
-        const fecha = comentario.fechaObj?.toLocaleString() || "";
-        const p = document.createElement("p");
-        p.innerHTML = `<strong>${comentario.usuario}</strong> [${fecha}]: ${comentario.mensaje}`;
-        comentariosContenedor.appendChild(p);
-      });
+      // Mostrar solo el último comentario
+      const ultimoComentario = comentarios[comentarios.length - 1];
+      const ultimoComentarioTexto = ultimoComentario
+      ? `<strong>${ultimoComentario.usuario}</strong> [${ultimoComentario.fechaObj?.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}]: ${ultimoComentario.mensaje}`
+      : "Sin comentarios aún.";
+
+      const resumenComentario = document.createElement("div");
+      resumenComentario.innerHTML = `
+        <strong>Último comentario:</strong><br>
+        <p>${ultimoComentarioTexto}</p>
+      `;
+
+      chatDiv.appendChild(resumenComentario);
+
+      if (comentarios.length > 1) {
+  const btnVerTodos = document.createElement("button");
+  btnVerTodos.textContent = "Ver todos los comenatarios";
+  btnVerTodos.className = "btn btn-info btn-sm me-2 ver-todos-comentarios";
+
+  // Inserta antes del botón de completar
+  const btnCompletar = div.querySelector(".btn-completar-tarea");
+  btnCompletar.parentNode.insertBefore(btnVerTodos, btnCompletar);
+
+  btnVerTodos.addEventListener("click", () => {
+    const modal = document.createElement("div");
+    modal.classList.add("modal", "fade");
+    modal.setAttribute("tabindex", "-1");
+
+    modal.innerHTML = `
+      <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Comentarios de "${tarea.nombre}"</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body" style="max-height: 300px; overflow-y: auto;">
+            ${comentarios.map(c => `<p><strong>${c.usuario}</strong> [${c.fechaObj.toLocaleString()}]: ${c.mensaje}</p>`).join("")}
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+
+    modal.addEventListener("hidden.bs.modal", () => modal.remove());
+  });
+}
+
 
 
       const formComentario = document.createElement("form");
@@ -810,7 +857,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         await renderizarTareas();
       });
 
-      chatDiv.appendChild(comentariosContenedor);
       chatDiv.appendChild(formComentario);
       div.appendChild(chatDiv);
 
@@ -1177,6 +1223,7 @@ form.addEventListener("submit", async (e) => {
     const ref = doc(db, "usuarios", snap.docs[0].id);
     await updateDoc(ref, { contrasena: nueva });
     ok.classList.remove("d-none");
+    window.location.href = "perfil.html";
   }
 });
 
