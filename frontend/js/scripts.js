@@ -1,7 +1,7 @@
 // scripts.js
 
 // --- IMPORTS DE FIREBASE ---
-import { collection, getDocs, query, where, doc, addDoc, updateDoc, deleteDoc, getDoc, arrayUnion, arrayRemove, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+import { collection, getDocs, query, where, doc, addDoc, updateDoc, deleteDoc, getDoc, arrayUnion, arrayRemove, serverTimestamp, deleteField } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 import { db } from '../js/firebase.js';
 
 // --- PROTECCION SESIÓN NO INICIADA ---
@@ -272,7 +272,7 @@ async function mostrarProyectos(usuario) {
   ]);
 
   const contenedor = document.getElementById("lista-proyectos");
-  contenedor.innerHTML = "";
+  //contenedor.innerHTML = "" ;
   const proyectosMostrados = new Set();
 
     const mostrarProyecto = async (docSnap, esCreador) => {
@@ -656,6 +656,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   const filtroFecha = document.getElementById("filtroFecha");
   const mapaPrioridades = ["baja", "media", "alta"];
   const textoPrioridades = ["Baja", "Media", "Alta"];
+  const params = new URLSearchParams(window.location.search);
+  const idTareaDestacada = params.get("idTarea");
+  console.log("idTareaDestacada desde URL:", idTareaDestacada);
 
   const obtenerTareas = async () => {
     const proyectosRef = collection(db, "proyectos");
@@ -712,15 +715,28 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Renderiza las tareas
   const renderizarTareas = async () => {
+
     const tareas = aplicarFiltros(await obtenerTareas());
     //console.log(tareas)
     // Ordenar por fecha
     tareas.sort((a, b) => new Date(a.fechaLimite) - new Date(b.fechaLimite));
     contenedorTareas.innerHTML = "";
-
+    const tareaResaltada = idTareaDestacada;
+    console.log(tareaResaltada);
     tareas.forEach(async (tarea) => {
       
       const fecha = new Date(tarea.fechaLimite);
+      const fechaCompletado = tarea.fechaCompletado?.toDate?.();
+      const infoExtra = tarea.completada && tarea.completadaPor && fechaCompletado
+      ? `<div class="badge bg-success ms-2">Completada por ${tarea.completadaPor} el ${fechaCompletado.toLocaleString("es-ES", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        })}</div>`
+      : "";
+
       const fechaFormateada = fecha.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
       const prioridadTexto = textoPrioridades[tarea.prioridad] || "Sin prioridad";
       const clases = ["fila-tarea"];
@@ -745,14 +761,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       div.innerHTML = `
         <div class="d-flex align-items-center">
           <div class="flex-grow-1 contenido-tarea">
-            <strong>${tarea.nombre}</strong>
-            : ${tarea.descripcion}
+            <strong>${tarea.nombre}</strong>: ${tarea.descripcion} ${infoExtra} 
             ${!tarea.completada && diasRestantes <= 0 ? '<span class="badge bg-danger ms-2">Vencida</span>' : ''}
             ${!tarea.completada && diasRestantes > 0 && diasRestantes <= 2 ? '<span class="badge bg-warning text-dark ms-2">Fecha límite cerca</span>' : ''}
             <br>
             <small>
-              Prioridad: ${prioridadTexto} | Fecha límite: ${fechaFormateada}
-              Creado por: ${tarea.creadaPor}
+              Prioridad: ${prioridadTexto} | Fecha límite: ${fechaFormateada} <br>
+              <strong>Proyecto: ${tarea.nombreProyecto}</strong>
             </small>
           </div>
           <div>
@@ -792,42 +807,42 @@ document.addEventListener("DOMContentLoaded", async () => {
       chatDiv.appendChild(resumenComentario);
 
       if (comentarios.length > 1) {
-  const btnVerTodos = document.createElement("button");
-  btnVerTodos.textContent = "Ver todos los comenatarios";
-  btnVerTodos.className = "btn btn-info btn-sm me-2 ver-todos-comentarios";
+        const btnVerTodos = document.createElement("button");
+        btnVerTodos.textContent = "Ver todos los comentarios";
+        btnVerTodos.className = "btn btn-info btn-sm me-2 ver-todos-comentarios";
 
-  // Inserta antes del botón de completar
-  const btnCompletar = div.querySelector(".btn-completar-tarea");
-  btnCompletar.parentNode.insertBefore(btnVerTodos, btnCompletar);
+        // Inserta antes del botón de completar
+        const btnCompletar = div.querySelector(".btn-completar-tarea");
+        btnCompletar.parentNode.insertBefore(btnVerTodos, btnCompletar);
 
-  btnVerTodos.addEventListener("click", () => {
-    const modal = document.createElement("div");
-    modal.classList.add("modal", "fade");
-    modal.setAttribute("tabindex", "-1");
+        btnVerTodos.addEventListener("click", () => {
+          const modal = document.createElement("div");
+          modal.classList.add("modal", "fade");
+          modal.setAttribute("tabindex", "-1");
 
-    modal.innerHTML = `
-      <div class="modal-dialog modal-dialog-scrollable">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Comentarios de "${tarea.nombre}"</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body" style="max-height: 300px; overflow-y: auto;">
-            ${comentarios.map(c => `<p><strong>${c.usuario}</strong> [${c.fechaObj.toLocaleString()}]: ${c.mensaje}</p>`).join("")}
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-          </div>
-        </div>
-      </div>
-    `;
+          modal.innerHTML = `
+            <div class="modal-dialog modal-dialog-scrollable">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Comentarios de "${tarea.nombre}"</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="max-height: 300px; overflow-y: auto;">
+                  ${comentarios.map(c => `<p><strong>${c.usuario}</strong> [${c.fechaObj.toLocaleString()}]: ${c.mensaje}</p>`).join("")}
+                </div>
+                <div class="modal-footer">
+                  <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+              </div>
+            </div>
+          `;
 
-    document.body.appendChild(modal);
-    const bsModal = new bootstrap.Modal(modal);
-    bsModal.show();
+          document.body.appendChild(modal);
+          const bsModal = new bootstrap.Modal(modal);
+          bsModal.show();
 
-    modal.addEventListener("hidden.bs.modal", () => modal.remove());
-  });
+          modal.addEventListener("hidden.bs.modal", () => modal.remove());
+        });
 }
 
 
@@ -860,10 +875,16 @@ document.addEventListener("DOMContentLoaded", async () => {
       chatDiv.appendChild(formComentario);
       div.appendChild(chatDiv);
 
-      // Listener de completar tarea
+        // Listener de completar tarea
       div.querySelector(".btn-completar-tarea").addEventListener("click", async () => {
         const tareaRef = doc(db, "tareas", tarea.id);
-        await updateDoc(tareaRef, { completada: !tarea.completada });
+        await updateDoc(tareaRef, {
+          completada: !tarea.completada,
+          completadaPor: !tarea.completada ? usuarioActual.usuario : null,
+          fechaCompletado: !tarea.completada ? new Date() : null
+        });
+
+
         await actualizarUltimaModificacion(tarea.idProyecto);
         await renderizarTareas();
       });
@@ -915,6 +936,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         contenedor.querySelector(".btn-cancelar").addEventListener("click", renderizarTareas);
     });
 
+     if (tareaResaltada === tarea.id) {
+      // Espera un pequeño tiempo para asegurar que el DOM lo haya procesado
+      setTimeout(() => {
+        div.classList.add("resaltada");
+        div.scrollIntoView({ behavior: "smooth", block: "center" });
+
+        setTimeout(() => {
+          div.classList.remove("resaltada");
+          localStorage.removeItem("tareaResaltada");
+        }, 3000);
+      }, 100);
+    }
     contenedorTareas.appendChild(div);
   });
 }
@@ -1075,6 +1108,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const creador = proyectoDoc?.data().creadoPor || "desconocido";
 
       tareasPorDia[clave].push({
+        id: doc.id,
         nombre: tarea.nombre,
         proyecto: proyectoNombre,
         creador: creador === usuarioActual.usuario ? "ti" : creador
@@ -1099,7 +1133,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const clave = `${anio}-${mes}-${dia}`;
       const tareas = tareasPorDia[clave] || [];
       let contenidoTareas = tareas.map(t => `
-        <div class="task">
+        <div class="task tarea-calendario" data-id-tarea="${t.id}">
           ${t.nombre}<br>
           <small><strong>Proyecto: ${t.proyecto}</small></strong><br>
           <small>Creado por ${t.creador}</small>
@@ -1124,6 +1158,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     html += '</div>';
     contenedor.innerHTML = html;
   }
+
+  contenedor.addEventListener("click", (e) => {
+  const tareaDiv = e.target.closest(".tarea-calendario");
+  if (tareaDiv) {
+    const idTarea = tareaDiv.getAttribute("data-id-tarea");
+    if (idTarea) {
+      window.location.href = `tareas.html?idTarea=${idTarea}`;
+    }
+  }
+});
+
 
   // Evento botón mes anterior
   btnAnterior.addEventListener("click", () => {
