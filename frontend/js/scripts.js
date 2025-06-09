@@ -43,7 +43,7 @@ function mostrarAviso(proyectos) {
   contenedor.style.borderRadius = "8px";
   contenedor.style.boxShadow = "0 0 10px rgba(0,0,0,0.2)";
   contenedor.style.zIndex = "9999";
-
+  
   const encabezado = document.createElement("strong");
   encabezado.textContent = "Desde tu última conexión:";
   contenedor.appendChild(encabezado);
@@ -61,7 +61,21 @@ function mostrarAviso(proyectos) {
   const botonCerrar = document.createElement("button");
   botonCerrar.textContent = "Cerrar";
   botonCerrar.className = "btn btn-sm btn-outline-primary mt-2";
-  botonCerrar.onclick = () => contenedor.remove();
+  botonCerrar.onclick = async () => {
+  contenedor.remove();
+
+  // Actualiza la fecha de última conexión
+  try {
+    const usuarioRef = doc(db, "usuarios", usuarioActual.id);
+    await updateDoc(usuarioRef, {
+      ultimaConexion: new Date()
+    });
+    console.log("Última conexión actualizada.");
+  } catch (err) {
+    console.error("Error al actualizar la última conexión:", err);
+  }
+};
+
   contenedor.appendChild(botonCerrar);
 
   document.body.appendChild(contenedor);
@@ -283,6 +297,13 @@ const proyectosOrdenados = [...proyectosMap.values()].sort((a, b) => {
 });
 
 
+  const usuariosSnap = await getDocs(collection(db, "usuarios"));
+  const mapaUsuarios = {};
+  usuariosSnap.forEach(doc => {
+    const data = doc.data();
+    mapaUsuarios[data.usuario] = data.ultimaConexion?.toDate?.() || null;
+  });
+
   const contenedor = document.getElementById("lista-proyectos");
   //contenedor.innerHTML = "" ;
   const proyectosMostrados = new Set();
@@ -304,84 +325,103 @@ const proyectosOrdenados = [...proyectosMap.values()].sort((a, b) => {
       ? proyecto.colaboradores.join(", ")
       : "Sin colaboradores";
 
-      const privadoCompartido = (proyecto.colaboradores?.length > 0)
-        ? "Compartido"
-        : "Privado";
+    const privadoCompartido = (proyecto.colaboradores?.length > 0)
+      ? "Compartido"
+      : "Privado";
 
-      const iconoEstado = (proyecto.colaboradores?.length > 0)
-        ? `<i class="fas fa-users text-primary" title="Proyecto compartido"></i>`
-        : `<i class="fas fa-lock text-secondary" title="Proyecto privado"></i>`;
+    const iconoEstado = (proyecto.colaboradores?.length > 0)
+      ? `<i class="fas fa-users text-primary" title="Proyecto compartido"></i>`
+      : `<i class="fas fa-lock text-secondary" title="Proyecto privado"></i>`;
 
-      const ultimaMod = proyecto.ultimaModificacion?.toDate
-      ? proyecto.ultimaModificacion.toDate().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
-        proyecto.ultimaModificacion.toDate().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+    const ultimaMod = proyecto.ultimaModificacion?.toDate
+    ? proyecto.ultimaModificacion.toDate().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
+      proyecto.ultimaModificacion.toDate().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
       : "Sin cambios recientes";
 
 
-      const barraProgresoHTML = totalTareas > 0 ? `
-        <div class="progress mb-2">
-          <div class="progress-bar ${esCompletado ? 'bg-success' : 'bg-info'}" role="progressbar" style="width: ${progreso}%;">
-            ${tareasCompletadas}/${totalTareas} tareas completadas
-          </div>
+    const barraProgresoHTML = totalTareas > 0 ? `
+      <div class="progress mb-2">
+        <div class="progress-bar ${esCompletado ? 'bg-success' : 'bg-info'}" role="progressbar" style="width: ${progreso}%;">
+           ${tareasCompletadas}/${totalTareas} tareas completadas
         </div>
-      ` : `<p class="text-muted">Este proyecto aún no tiene tareas.</p>`;
+      </div>
+    ` : `<p class="text-muted">Este proyecto aún no tiene tareas.</p>`;
 
-      const etiquetaCompletado = esCompletado
-        ? `<span class="badge bg-success">Completado</span>`
-        : "";
+    const etiquetaCompletado = esCompletado
+      ? `<span class="badge bg-success">Completado</span>`
+      : "";
 
-
+    const participantes = [proyecto.creadoPor, ...(proyecto.colaboradores || [])];
+    const listaParticipantesHTML = participantes.map(nombre => {
+      const ultima = mapaUsuarios[nombre];
+      const fechaFormateada = ultima
+        ? ultima.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+        : "Sin conexión registrada";
+      return `<li><strong>${nombre}</strong>: Última conexión: ${fechaFormateada}</li>`;
+    }).join("");
 
     // Crear el HTML para mostrar el proyecto
     const html = `
-      <div class="project mb-4">
-        <h5>${proyecto.nombre}</h5>
-        <p>Descripción: ${proyecto.descripcion || "Sin descripción."}</p>
-        <p>Creado por: ${proyecto.creadoPor}</p>
-        <p><strong>Colaboradores:</strong> ${colaboradoresTexto}</p>
-        <p><strong>Estado:</strong> ${privadoCompartido} ${iconoEstado}</p>
-        <p><strong>Última modificación:</strong> ${ultimaMod}</p>
-        <p>${barraProgresoHTML}</p>
-        <p>${etiquetaCompletado}</p>
+      <div class="project mb-4 border rounded p-3">
+      ${!esInicio ? `  
+        <div class="row">
+          <div class="col-md-8">
+          ` : ""}
+            <h5>${proyecto.nombre}</h5>
+            <p>${proyecto.descripcion || "Sin descripción."}</p>
+            <p>Creado por: ${proyecto.creadoPor}</p>
+            <p><strong>Colaboradores:</strong> ${colaboradoresTexto}</p>
+            <p><strong>Estado:</strong> ${privadoCompartido} ${iconoEstado}</p>
+            <p><strong>Última modificación:</strong> ${ultimaMod}</p>
+            <p>${barraProgresoHTML}</p>
+            <p>${etiquetaCompletado}</p>
 
+            ${!esInicio && esCreador ? `
+              <button class="btn btn-success btn-sm btn-colaboracion-proyecto" data-id="${idProyecto}">Colaboración</button>
+              <button class="btn btn-warning btn-sm btn-editar-proyecto" data-id="${idProyecto}" data-nombre="${proyecto.nombre}" data-descripcion="${proyecto.descripcion || ''}">Editar Proyecto</button>
+              <button class="btn btn-danger btn-sm btn-eliminar-proyecto" data-id="${idProyecto}">Eliminar Proyecto</button>
+            ` : ""}
 
-        ${!esInicio && esCreador ? `
-          <button class="btn btn-success btn-sm btn-colaboracion-proyecto" data-id="${idProyecto}">Colaboración</button>
-          <button class="btn btn-warning btn-sm btn-editar-proyecto" data-id="${idProyecto}" data-nombre="${proyecto.nombre}" data-descripcion="${proyecto.descripcion || ''}">Editar Proyecto</button>
-          <button class="btn btn-danger btn-sm btn-eliminar-proyecto" data-id="${idProyecto}">Eliminar Proyecto</button>
-        ` : ""}
+            ${!esInicio ? `
+              <button class="btn btn-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#form-${idProyecto}">Añadir Tarea</button>
+              <button class="btn btn-info btn-sm btn-detalles-proyecto" data-id="${idProyecto}" data-nombre="${proyecto.nombre}">Consultar detalles</button>
+              <div class="collapse mt-2" id="form-${idProyecto}">
+                <form class="formulario-tarea" data-id-proyecto="${idProyecto}">
+                  <div class="mb-2">
+                    <label class="form-label">Nombre</label>
+                    <input type="text" class="form-control" name="nombre" required>
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">Descripción</label>
+                    <textarea class="form-control" name="descripcion"></textarea>
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">Fecha límite</label>
+                    <input type="date" class="form-control" name="fechaLimite" required>
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">Prioridad</label>
+                    <select class="form-select" name="prioridad">
+                      <option value="0">Baja</option>
+                      <option value="1">Media</option>
+                      <option value="2">Alta</option>
+                    </select>
+                  </div>
+                  <button type="submit" class="btn btn-success btn-sm">Crear Tarea</button>
+                </form>
+              </div>
+          </div>
 
-        ${!esInicio ? `
-        <button class="btn btn-secondary btn-sm " data-bs-toggle="collapse" data-bs-target="#form-${idProyecto}">Añadir Tarea</button>
-        <button class="btn btn-info btn-sm btn-detalles-proyecto" data-id="${idProyecto}" data-nombre="${proyecto.nombre}">Consultar detalles</button>
-        <div class="collapse mt-2" id="form-${idProyecto}">
-          <form class="formulario-tarea" data-id-proyecto="${idProyecto}">
-            <div class="mb-2">
-              <label class="form-label">Nombre</label>
-              <input type="text" class="form-control" name="nombre" required>
-            </div>
-            <div class="mb-2">
-              <label class="form-label">Descripción</label>
-              <textarea class="form-control" name="descripcion"></textarea>
-            </div>
-            <div class="mb-2">
-              <label class="form-label">Fecha límite</label>
-              <input type="date" class="form-control" name="fechaLimite" required>
-            </div>
-            <div class="mb-2">
-              <label class="form-label">Prioridad</label>
-              <select class="form-select" name="prioridad">
-                <option value="0">Baja</option>
-                <option value="1">Media</option>
-                <option value="2">Alta</option>
-              </select>
-            </div>
-            <button type="submit" class="btn btn-success btn-sm">Crear Tarea</button>
-          </form>
+          <div class="col-md-4 border-start ps-3">
+            <h6>Participantes</h6>
+            <ul class="mb-0">
+              ${listaParticipantesHTML}
+            </ul>
+          </div>` : ""}
         </div>
-        ` : ""}
       </div>
     `;
+
 
     contenedor.insertAdjacentHTML("beforeend", html);
   };
@@ -770,7 +810,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       div.innerHTML = `
         <div class="d-flex align-items-center">
           <div class="flex-grow-1 contenido-tarea">
-            <strong>${tarea.nombre}</strong>: ${tarea.descripcion} ${infoExtra} 
+            <strong>${tarea.nombre}</strong> ${infoExtra} <br>
+            ${tarea.descripcion}
             ${!tarea.completada && diasRestantes <= 0 ? '<span class="badge bg-danger ms-2">Vencida</span>' : ''}
             ${!tarea.completada && diasRestantes > 0 && diasRestantes <= 2 ? '<span class="badge bg-warning text-dark ms-2">Fecha límite cerca</span>' : ''}
             <br>
@@ -837,7 +878,13 @@ document.addEventListener("DOMContentLoaded", async () => {
                   <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body" style="max-height: 300px; overflow-y: auto;">
-                  ${comentarios.map(c => `<p><strong>${c.usuario}</strong> [${c.fechaObj.toLocaleString()}]: ${c.mensaje}</p>`).join("")}
+                  ${comentarios.map(c => `<p><strong>${c.usuario}</strong> [${c.fechaObj.toLocaleString("es-ES", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit"
+                })}]: ${c.mensaje}</p>`).join("")}
                 </div>
                 <div class="modal-footer">
                   <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
