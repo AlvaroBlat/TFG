@@ -1,69 +1,115 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tareas - Gestión de Tareas</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="../css/estilos.css">
-</head>
-<body>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <link rel="stylesheet" href="../css/estilos.css" />
+  </head>
+  <body>
     <!-- Barra de navegación -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand me-auto" href="index.html"><i class="fas fa-home"></i> Inicio</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="proyectos.html"><i class="fas fa-folder"></i> Proyectos</a></li>
-                    <li class="nav-item"><a class="nav-link" href="tareas.html"><i class="fas fa-tasks"></i> Tareas</a></li>
-                    <li class="nav-item"><a class="nav-link" href="calendario.html"><i class="fas fa-calendar-alt"></i> Calendario</a></li>
-                    <!-- <li class="nav-item"><a class="nav-link" href="colaboracion.html"><i class="fas fa-users"></i> Colaboración</a></li> -->
-                    <li class="nav-item"><a class="nav-link" href="#" id="logout"><i class="fas fa-sign-in-alt"></i> Cerrar sesión</a></li>
-                    <li class="nav-item"><a class="nav-link" id="nombre-usuario-nav" href="perfil.html"></a></li>
-                    <li class="nav-item">
-                        <button id="toggle-tema" class="btn btn-link nav-link" title="Cambiar tema">
-                            <i id="icono-tema" class="fas fa-moon"></i>
-                        </button>
-                    </li>
-                </ul>
-            </div>
+      <div class="container">
+        <a class="navbar-brand me-auto" href="index.html"
+          ><i class="fas fa-home"></i> Inicio</a
+        >
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="proyectos.html"
+                ><i class="fas fa-folder"></i> Proyectos</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="tareas.html"
+                ><i class="fas fa-tasks"></i> Tareas</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="calendario.html"
+                ><i class="fas fa-calendar-alt"></i> Calendario</a
+              >
+            </li>
+            <!-- <li class="nav-item"><a class="nav-link" href="colaboracion.html"><i class="fas fa-users"></i> Colaboración</a></li> -->
+            <li class="nav-item">
+              <a class="nav-link" href="#" id="logout"
+                ><i class="fas fa-sign-in-alt"></i> Cerrar sesión</a
+              >
+            </li>
+            <li class="nav-item">
+              <a
+                class="nav-link"
+                id="nombre-usuario-nav"
+                href="perfil.html"
+              ></a>
+            </li>
+            <li class="nav-item">
+              <button
+                id="toggle-tema"
+                class="btn btn-link nav-link"
+                title="Cambiar tema"
+              >
+                <i id="icono-tema" class="fas fa-moon"></i>
+              </button>
+            </li>
+          </ul>
         </div>
+      </div>
     </nav>
 
     <div class="container mt-4">
-        <h2>Tareas</h2>
-        <p>Aquí puedes ver, editar, completar o eliminar tus tareas. Además, puedes filtrar por prioridad o fecha límite.</p>
+      <h2>Tareas</h2>
+      <p>
+        Aquí puedes ver, editar, completar o eliminar tus tareas. Además, puedes
+        filtrar por prioridad o fecha límite.
+      </p>
 
-        <!-- Filtros -->
-        <div class="seccionFiltros">
-            <div class="row">
-                <div class="col-md-6">
-                    <label for="filtroPrioridad" class="form-label">Filtrar por prioridad:</label>
-                    <select id="filtroPrioridad" class="form-select">
-                        <option value="todas">Todas</option>
-                        <option value="alta">Alta</option>
-                        <option value="media">Media</option>
-                        <option value="baja">Baja</option>
-                    </select>
-                </div>
-                <div class="col-md-6">
-                    <label for="filtroFecha" class="form-label">Filtrar por fecha límite:</label>
-                    <select id="filtroFecha" class="form-select">
-                        <option value="todas">Todas</option>
-                        <option value="hoy">Hoy</option>
-                        <option value="estaSemana">Esta semana</option>
-                        <option value="esteMes">Este mes</option>
-                    </select>
-                </div>
-            </div>
+      <!-- Filtros -->
+      <div class="seccionFiltros">
+        <div class="row">
+          <div class="col-md-6">
+            <label for="filtroPrioridad" class="form-label"
+              >Filtrar por prioridad:</label
+            >
+            <select id="filtroPrioridad" class="form-select">
+              <option value="todas">Todas</option>
+              <option value="alta">Alta</option>
+              <option value="media">Media</option>
+              <option value="baja">Baja</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label for="filtroFecha" class="form-label"
+              >Filtrar por fecha límite:</label
+            >
+            <select id="filtroFecha" class="form-select">
+              <option value="todas">Todas</option>
+              <option value="hoy">Hoy</option>
+              <option value="estaSemana">Esta semana</option>
+              <option value="esteMes">Este mes</option>
+            </select>
+          </div>
         </div>
+      </div>
 
-        <!-- Lista de tareas -->
-        <div id="listaTareas"></div>
+      <!-- Lista de tareas -->
+      <div id="listaTareas"></div>
     </div>
 
     <!-- Firebase y scripts -->
@@ -71,5 +117,5 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
     <script type="module" src="../js/firebase.js" defer></script>
     <script type="module" src="../js/scripts.js" defer></script>
-</body>
+  </body>
 </html>

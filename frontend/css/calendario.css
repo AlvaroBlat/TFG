@@ -1,26 +1,26 @@
 /* Fila de los días de la semana */
 .row.days {
-    background-color: #fff3cd; /* Amarillo suave de fondo */
+  background-color: #fff3cd; /* Amarillo suave de fondo */
 }
 
 /* Cambiar el estilo de los días */
 .day {
-    font-size: 18px; /* Tamaño de fuente */
-    font-weight: normal; /* Sin negrita */
+  font-size: 18px; /* Tamaño de fuente */
+  font-weight: normal; /* Sin negrita */
 }
 
 /* Estilo de las casillas del calendario */
 .col {
-    border: 1px solid #dee2e6;
-    padding: 10px;
-    min-height: 100px; /* Altura mínima para los días */
+  border: 1px solid #dee2e6;
+  padding: 10px;
+  min-height: 100px; /* Altura mínima para los días */
 }
 
 /* Estilo de las tareas */
 .task {
-    border: 1px solid #007bff;
-    padding: 5px;
-    margin: 5px 0;
-    border-radius: 5px;
-    background-color: #f8f9fa;
+  border: 1px solid #007bff;
+  padding: 5px;
+  margin: 5px 0;
+  border-radius: 5px;
+  background-color: #f8f9fa;
 }

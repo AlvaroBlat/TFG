@@ -1,130 +1,130 @@
 body {
-    background-color: #f8f9fa;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
+  background-color: #f8f9fa;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .fila-tarea {
-    border: 1px solid #dee2e6;
-    padding: 10px;
-    margin-bottom: 10px;
-    border-radius: 5px;
-    background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  background-color: #f8f9fa;
 }
 
 .fila-tarea.completada {
-    background-color: #d4edda;
+  background-color: #d4edda;
 }
 
 .fila-tarea .btn {
-    margin-left: 5px;
+  margin-left: 5px;
 }
 
 .seccionFiltros {
-    margin-bottom: 20px;
+  margin-bottom: 20px;
 }
 
 .contenedor-login {
-    background-color: #fff;
-    padding: 2rem;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    max-width: 400px;
-    width: 100%;
-    margin: auto;
+  background-color: #fff;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-width: 400px;
+  width: 100%;
+  margin: auto;
 }
 
 .contenedor-login h2 {
-    text-align: center;
-    margin-bottom: 1.5rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
 }
 
 .btn-login {
-    width: 100%;
+  width: 100%;
 }
 
 .project {
-    border: 1px solid #dee2e6;
-    padding: 10px;
-    margin-bottom: 10px;
-    border-radius: 5px;
-    background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  background-color: #f8f9fa;
 }
 
 .contenedor-registro {
-    background-color: #fff;
-    padding: 2rem;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    max-width: 500px;
-    width: 100%;
-    margin: auto;
+  background-color: #fff;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  width: 100%;
+  margin: auto;
 }
 .contenedor-registro h2 {
-    text-align: center;
-    margin-bottom: 1.5rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
 }
-    
+
 .btn-registro {
-    width: 100%;
+  width: 100%;
 }
 
 .small-calendar {
-    padding: 10px;
-    margin-top: 20px;
+  padding: 10px;
+  margin-top: 20px;
 }
 
 .day {
-    border: 1px solid #000000;
-    height: 50px;
-    position: relative;
-    text-align: center;
+  border: 1px solid #000000;
+  height: 50px;
+  position: relative;
+  text-align: center;
 }
 
 .day-name {
-    background-color: rgb(218, 192, 100);
-    color: black;
-    font-weight: bold;
+  background-color: lightgrey;
+  color: black;
+  font-weight: bold;
 }
 
 .marked {
-    background-color: #09f;
-    color: white;
+  background-color: #09f;
+  color: white;
 }
 
 .day-grande {
-    border: 1px solid #dee2e6;
-    min-height: 100px;
-    position: relative;
-    padding: 5px;
-    text-align: left;
+  border: 1px solid #dee2e6;
+  min-height: 100px;
+  position: relative;
+  padding: 5px;
+  text-align: left;
 }
 
 .task {
-    background-color: #f8f9fa;
-    border: 1px solid #007bff;
-    padding: 2px;
-    margin: 2px 0;
-    border-radius: 3px;
-    font-size: 0.8em;
+  background-color: #f8f9fa;
+  border: 1px solid #007bff;
+  padding: 2px;
+  margin: 2px 0;
+  border-radius: 3px;
+  font-size: 0.8em;
 }
 
 .calendar-header {
-    background-color: #f8f9fa;
-    font-weight: bold;
-    text-align: center;
+  background-color: #f8f9fa;
+  font-weight: bold;
+  text-align: center;
 }
 
 .navegacion-calendario {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
 }
 body.modo-oscuro {
-    background-color: #1e1e1e;
-    color: #f1f1f1;
+  background-color: #1e1e1e;
+  color: #f1f1f1;
 }
 
 body.modo-oscuro .project,
@@ -137,32 +137,32 @@ body.modo-oscuro .form-control,
 body.modo-oscuro .calendar-header,
 body.modo-oscuro .task,
 body.modo-oscuro .form-select {
-    background-color: #1e1e1e;
-    color: #f1f1f1;
-    border-color: #444;
+  background-color: #1e1e1e;
+  color: #f1f1f1;
+  border-color: #444;
 }
 
 body.modo-oscuro .marked {
-    background-color: #0af;
-    color: white;
+  background-color: #0af;
+  color: white;
 }
 
 body.modo-oscuro .day-name,
 body.modo-oscuro label,
 body.modo-oscuro h2,
 body.modo-oscuro h5 {
-    background-color: #1e1e1e;
-    color: #f1f1f1;
+  background-color: #1e1e1e;
+  color: #f1f1f1;
 }
 
 body.modo-oscuro .btn {
-    background-color: #2c2c2c;
-    color: #f1f1f1;
-    border-color: #666;
+  background-color: #2c2c2c;
+  color: #f1f1f1;
+  border-color: #666;
 }
 
 body.modo-oscuro .btn:hover {
-    background-color: #3c3c3c;
+  background-color: #3c3c3c;
 }
 
 .comentarios p {
@@ -187,9 +187,14 @@ body.modo-oscuro .btn:hover {
   box-shadow: 0 0 10px #0d6efd;
 }
 
-
 @keyframes resaltarTarea {
-  0%   { background-color: #e7f1ff; }
-  50%  { background-color: #cfe2ff; }
-  100% { background-color: #e7f1ff; }
+  0% {
+    background-color: #e7f1ff;
+  }
+  50% {
+    background-color: #cfe2ff;
+  }
+  100% {
+    background-color: #e7f1ff;
+  }
 }

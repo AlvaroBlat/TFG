@@ -7,10 +7,10 @@ const firebaseConfig = {
   projectId: "proyecto-tfg-1865a",
   storageBucket: "proyecto-tfg-1865a.firebasestorage.app",
   messagingSenderId: "403951365279",
-  appId: "1:403951365279:web:cd700245009286b99546aa"
+  appId: "1:403951365279:web:cd700245009286b99546aa",
 };
 
 // Inicializar Firebase
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app)
-export {db}
+const db = getFirestore(app);
+export { db };
