@@ -201,7 +201,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!nuevoResultado.empty) {
           const doc = nuevoResultado.docs[0];
           localStorage.setItem("usuarioActual", JSON.stringify(doc.data()));
-          datosUsuario.id = doc.id;
+          await actualizarUltimaConexion(doc.id);
+          //datosUsuario.id = doc.id;
         }
 
         window.location.href = "index.html";
@@ -347,11 +348,15 @@ document
     }
 
     try {
+      const startTime = performance.now(); // Iniciar medición
       await addDoc(collection(db, "proyectos"), {
         nombre: nombreProyecto,
         creadoPor: usuarioActual.usuario,
         descripcion: descripcionProyecto || "",
       });
+      const endTime = performance.now(); // Terminar medición
+      const duration = (endTime - startTime).toFixed(2);
+      console.log(`⏱ Tiempo de creación del proyecto: ${duration} ms`);
       alert("Proyecto añadido correctamente.");
       window.location.reload();
     } catch (error) {
@@ -362,6 +367,7 @@ document
 
 // --- MOSTRAR PROYECTOS ---
 async function mostrarProyectos(usuario) {
+  const startTime = performance.now(); // INICIO medición
   const esInicio = document.title === "Inicio";
 
   const proyectosRef = collection(db, "proyectos");
@@ -525,6 +531,13 @@ async function mostrarProyectos(usuario) {
     await mostrarProyecto(doc, esCreador);
   }
 
+  // FIN medición (una vez terminado el renderizado de todos los proyectos)
+  const endTime = performance.now();
+  const duration = (endTime - startTime).toFixed(2);
+  console.log(
+    `⏱ Tiempo total de carga y renderizado de proyectos: ${duration} ms`
+  );
+
   // Si no es la vista de inicio, estamos en la vista de proyectos, activamos listeners de botones
   if (!document.title.includes("Inicio")) {
     document.querySelectorAll(".formulario-tarea").forEach((form) => {
@@ -543,8 +556,14 @@ async function mostrarProyectos(usuario) {
         };
 
         try {
+          const start = performance.now(); // INICIO de la medición
+
           await addDoc(collection(db, "tareas"), tarea);
           await actualizarUltimaModificacion(tarea.idProyecto);
+
+          const end = performance.now(); // FIN de la medición
+          const duration = (end - start).toFixed(2);
+          console.log(`⏱ Tiempo al añadir tarea: ${duration} ms`);
           alert("Tarea añadida correctamente.");
           window.location.reload();
         } catch (err) {
@@ -895,6 +914,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Renderiza las tareas
   const renderizarTareas = async () => {
+    const start = performance.now(); // Iniciar medición
     const tareas = aplicarFiltros(await obtenerTareas());
     //console.log(tareas)
     // Ordenar por fecha
@@ -1089,6 +1109,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         input.value = "";
         localStorage.setItem("tareaResaltada", tarea.id);
+        console.log(
+          "Id de tarea resaltada:",
+          localStorage.getItem("tareaResaltada")
+        );
         await renderizarTareas();
       });
 
@@ -1100,6 +1124,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         .querySelector(".btn-completar-tarea")
         .addEventListener("click", async () => {
           const tareaRef = doc(db, "tareas", tarea.id);
+          const start = performance.now(); // INICIO de la medición
+
           await updateDoc(tareaRef, {
             completada: !tarea.completada,
             completadaPor: !tarea.completada ? usuarioActual.usuario : null,
@@ -1107,6 +1133,9 @@ document.addEventListener("DOMContentLoaded", async () => {
           });
 
           await actualizarUltimaModificacion(tarea.idProyecto);
+          const end = performance.now(); // FIN de la medición
+          const duration = (end - start).toFixed(2);
+          console.log(`⏱ Tiempo al cambiar estado de tarea: ${duration} ms`);
           localStorage.setItem("tareaResaltada", tarea.id);
           await renderizarTareas();
         });
@@ -1192,6 +1221,11 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       contenedorTareas.appendChild(div);
     });
+    const end = performance.now(); // Finalizar medición
+    const duration = (end - start).toFixed(2);
+    console.log(
+      `⏱ Tiempo total de carga y renderizado de tareas: ${duration} ms`
+    );
   };
 
   filtroPrioridad.addEventListener("change", renderizarTareas);
@@ -1330,7 +1364,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const btnAnterior = document.getElementById("mes-anterior");
   const btnSiguiente = document.getElementById("mes-siguiente");
 
-  const diasSemana = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
   const nombresMes = [
     "Enero",
     "Febrero",
@@ -1444,7 +1477,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (tareaDiv) {
       const idTarea = tareaDiv.getAttribute("data-id-tarea");
       if (idTarea) {
-        window.location.href = `tareas.html?idTarea=${idTarea}`;
+        localStorage.setItem("tareaResaltada", idTarea);
+        window.location.href = `tareas.html`;
       }
     }
   });
